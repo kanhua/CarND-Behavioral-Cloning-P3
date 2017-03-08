@@ -3,7 +3,7 @@ import numpy as np
 import tensorflow as tf
 # TODO: import Keras layers you need here
 from keras.models import Sequential,Model
-from keras.layers import Dense,Activation,Flatten,Input
+from keras.layers import Dense,Activation,Flatten,Input,Lambda
 from keras.applications.vgg16 import VGG16
 import pandas as pd
 import os
@@ -21,7 +21,7 @@ sample_folder = './sample behavioral cloning data/'
 
 ch, row, col = 3, 160, 320  # Trimmed image format
 
-p_ch, p_row, p_col = 3, 80, 160
+p_ch, p_row, p_col = 3, 160, 320
 img_placeholder = tf.placeholder("uint8", (None, 160, 320, 3))
 
 resize_op = tf.image.resize_images(img_placeholder, (p_row, p_col), method=0)
@@ -55,12 +55,8 @@ def generator(sess, samples, batch_size=32):
 
             # trim image to only see section with road
             X_train = np.array(images)
-            X_train=sess.run(resize_op,feed_dict={img_placeholder:X_train})
-            y_train=samples.iloc[offset:min(offset + batch_size,num_samples), 3]
-            X_train = preprocess_input(X_train.astype('float64'))
 
-            plt.imshow(X_train[0])
-            plt.savefig("test2.jpg")
+            y_train=samples.iloc[offset:min(offset + batch_size,num_samples), 3]
 
             yield X_train,y_train
 
@@ -98,6 +94,14 @@ def y_to_label(y_data):
 
     return new_y
 
+def resize_image(input_image):
+
+    #input_x = sess.run(resize_op, feed_dict={img_placeholder: input_image})
+    resized_img=tf.image.resize_images(input_image, (p_row, p_col), method=0)
+
+    return resized_img
+
+
 
 def main(_):
     # load bottleneck data
@@ -106,6 +110,7 @@ def main(_):
     train_samples, validation_samples = load_samples_df(test_size=0.2)
 
     batch_size=128
+    small_batch_size=12
     with tf.Session() as sess:
         K.set_session(sess)
         K.set_learning_phase(1)
@@ -114,19 +119,31 @@ def main(_):
         train_generator = generator(sess, train_samples, batch_size=batch_size)
         validation_generator = generator(sess, validation_samples, batch_size=batch_size)
 
-        pre_trained_model = VGG16(input_tensor=Input(shape=(p_row, p_col, ch)), include_top=False)
+        preprocess=Sequential()
+        #preprocess.add(Input(shape=(p_row, p_col, ch)))
+        #preprocess.add(Lambda(resize_image,input_shape=(p_row, p_col, ch)))
+        preprocess.add(Lambda(lambda x:x/255.0-0.5,input_shape=(row, col, ch)))
+
+        pre_trained_model = VGG16(input_tensor=preprocess.output, include_top=False)
+        #pre_trained_model = VGG16(input_tensor=Input(shape=(row, col, ch)), include_top=False)
         x = pre_trained_model.output
         x=Flatten()(x)
         x=Dense(100)(x)
         x=Dense(100)(x)
         x=Dense(1)(x)
-        model = Model(pre_trained_model.input, x)
+        #model = Model(pre_trained_model.input, x)
+        model = Model(preprocess.input, x)
 
         for layer in pre_trained_model.layers:
             layer.trainable = False
 
+        for layer in preprocess.layers:
+            layer.trainable = False
+
         model.compile(optimizer='adam',loss='mse')
-        model.fit_generator(train_generator,train_samples.shape[0],nb_epoch=10)
+        hist=model.fit_generator(train_generator,train_samples.shape[0],nb_epoch=10)
+        #hist=model.fit_generator(train_generator,small_batch_size*1,nb_epoch=1)
+        #pickle.dump(hist,open('hist.p','wb'))
         model.save("test_model.h5")
 
 
