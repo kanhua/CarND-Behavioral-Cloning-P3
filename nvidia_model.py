@@ -1,9 +1,9 @@
 import pickle
 import numpy as np
 import tensorflow as tf
-# TODO: import Keras layers you need here
 from keras.models import Sequential,Model
-from keras.layers import Dense,Activation,Flatten,Input,Lambda
+from keras.layers import Dense,Activation,\
+    Flatten,Input,Lambda,Cropping2D,Convolution2D
 from keras.applications.vgg16 import VGG16
 import pandas as pd
 import os
@@ -17,7 +17,7 @@ flags = tf.app.flags
 FLAGS = flags.FLAGS
 
 
-sample_folder = './lindata/'
+sample_folder = './data/'
 
 ch, row, col = 3, 160, 320  # Trimmed image format
 
@@ -113,36 +113,34 @@ def main(_):
     small_batch_size=12
 
 
-
     train_generator = generator(train_samples, batch_size=batch_size)
     validation_generator = generator(validation_samples, batch_size=batch_size)
 
-    preprocess=Sequential()
-    #preprocess.add(Input(shape=(p_row, p_col, ch)))
-    #preprocess.add(Lambda(resize_image,input_shape=(p_row, p_col, ch)))
-    preprocess.add(Lambda(lambda x:x/255.0-0.5,input_shape=(row, col, ch)))
+    nvidia_model=Sequential()
 
-    pre_trained_model = VGG16(input_tensor=preprocess.output, include_top=False)
-    #pre_trained_model = VGG16(input_tensor=Input(shape=(row, col, ch)), include_top=False)
-    x = pre_trained_model.output
-    x=Flatten()(x)
-    x=Dense(100)(x)
-    x=Dense(100)(x)
-    x=Dense(1)(x)
-    #model = Model(pre_trained_model.input, x)
-    model = Model(preprocess.input, x)
 
-    for layer in pre_trained_model.layers:
-        layer.trainable = False
+    nvidia_model.add(Lambda(lambda x:x/255.0-0.5,input_shape=(row, col, ch)))
 
-    for layer in preprocess.layers:
-        layer.trainable = False
+    nvidia_model.add(Cropping2D(cropping=((70,25),(0,0))))
+    nvidia_model.add(Convolution2D(24,5,5,subsample=(2,2),activation='relu'))
+    nvidia_model.add(Convolution2D(36,5,5,subsample=(2,2),activation='relu'))
+    nvidia_model.add(Convolution2D(48,5,5,subsample=(2,2),activation='relu'))
 
-    model.compile(optimizer='adam',loss='mse')
-    hist=model.fit_generator(train_generator,train_samples.shape[0],nb_epoch=10)
+    nvidia_model.add(Convolution2D(64,3,3,activation='relu'))
+
+    nvidia_model.add(Convolution2D(64,3,3,activation='relu'))
+
+    nvidia_model.add(Flatten())
+    nvidia_model.add(Dense(100))
+    nvidia_model.add(Dense(50))
+    nvidia_model.add(Dense(10))
+    nvidia_model.add(Dense(1))
+
+    nvidia_model.compile(optimizer='adam',loss='mse')
+    hist=nvidia_model.fit_generator(train_generator,train_samples.shape[0],nb_epoch=10)
     #hist=model.fit_generator(train_generator,small_batch_size*1,nb_epoch=1)
     #pickle.dump(hist,open('hist.p','wb'))
-    model.save("test_model.h5")
+    nvidia_model.save("test_model.h5")
 
 
 
