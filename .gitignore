@@ -5,6 +5,9 @@
 # pickle file
 *.p
 
+# model file
+*.h5
+
 # data file
 sample behavioral cloning data/
 
