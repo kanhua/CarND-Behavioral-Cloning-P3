@@ -19,12 +19,12 @@ sample_folder = './sample behavioral cloning data/'
 
 ch, row, col = 3, 160, 320  # Trimmed image format
 
-p_ch, p_row, p_col = 3, 224, 224
+p_ch, p_row, p_col = 3, 80, 160
 img_placeholder = tf.placeholder("uint8", (None, 160, 320, 3))
-#resize_op = tf.image.resize_images(img_placeholder, (p_row, p_col), method=0)
 
-single_img_placeholder=tf.placeholder("uint8",(160,320,3))
-resize_op = tf.image.resize_image_with_crop_or_pad(single_img_placeholder, p_row, p_col)
+resize_op = tf.image.resize_images(img_placeholder, (p_row, p_col), method=0)
+#single_img_placeholder=tf.placeholder("uint8",(160,320,3))
+#resize_op = tf.image.resize_image_with_crop_or_pad(single_img_placeholder, p_row, p_col)
 
 
 def load_samples():
@@ -59,14 +59,15 @@ def generator(sess, samples, batch_size=32):
             for batch_sample in batch_samples:
                 name = os.path.join(sample_folder, batch_sample)
                 center_image = cv2.imread(name)
-                center_image=sess.run(resize_op,feed_dict={single_img_placeholder:center_image})
+                #center_image=sess.run(resize_op,feed_dict={single_img_placeholder:center_image})
                 #cv2.imwrite('test.jpg',center_image)
                 images.append(center_image)
 
             # trim image to only see section with road
-            X_train = np.array(images).astype('float64')
+            X_train = np.array(images)
+            X_train=sess.run(resize_op,feed_dict={img_placeholder:X_train})
             y_train=samples.iloc[offset:min(offset + batch_size,num_samples), 3]
-            X_train = preprocess_input(X_train)
+            X_train = preprocess_input(X_train.astype('float64'))
 
             #plt.imshow(X_train[0])
             #plt.savefig("test2.jpg")
@@ -79,7 +80,7 @@ def create_model(trained_model, row, col, ch):
     if trained_model == 'vgg':
         model = VGG16(input_tensor=input_tensor, include_top=False)
         x = model.output
-        x = AveragePooling2D((7, 7))(x)
+        #x = AveragePooling2D((7, 7))(x)
         model = Model(model.input, x)
     elif trained_model == 'inception':
         model = InceptionV3(input_tensor=input_tensor, include_top=False)

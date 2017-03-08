@@ -59,60 +59,22 @@ def main(_):
     # 10 for cifar10
     # 43 for traffic
 
-    y_train=y_to_label(y_train)
-    y_val=y_to_label(y_val)
-    #
-    sel_idx=np.arange(y_train.shape[0])[y_train!=2]
-    #
-    y_train=np.take(y_train,sel_idx,axis=0)
-    X_train=np.take(X_train,sel_idx,axis=0)
-
-    a,b=np.unique(y_train,return_counts=True)
-    print(b)
-
-
-    # #
-    # print("filtered shape:")
-    # print(X_train.shape)
-    # print(y_train.shape)
-    # #
-    sel_idx=np.arange(y_val.shape[0])[y_val!=2]
-    y_val=np.take(y_val,sel_idx,axis=0)
-    X_val=np.take(X_val,sel_idx,axis=0)
-
-
-    print(y_val.shape)
-
-
-
-
-    class_n=len(np.unique(y_train.ravel()))
-    class_n2 = len(np.unique(y_val.ravel()))
-    print(class_n)
-
     #assert class_n==class_n2
 
     sq=Sequential()
-    sq.add(Flatten(input_shape=(1,1,512)))
+    sq.add(Flatten(input_shape=(X_train[0].shape)))
 
     sq.add(Dense(output_dim=100))
-    sq.add(Dense(output_dim=1,activation='softmax'))
-
-    assert class_n==2
+    sq.add(Dense(output_dim=200))
+    sq.add(Dense(output_dim=1))
 
     print(sq.layers[0].output_shape)
     print(sq.layers[1].output_shape)
-    sq.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy','recall'])
+    sq.compile(optimizer='adam', loss='mse')
 
-    from sklearn.preprocessing import LabelBinarizer
+    sq.fit(X_train, y_train, batch_size=128, nb_epoch=10,validation_data=(X_val,y_val))
 
-    lb = LabelBinarizer()
-    lb.fit(np.arange(0, class_n))
-    y_one_hot = lb.transform(y_train)
-
-    val_y_one_hot=lb.transform(y_val)
-
-    sq.fit(X_train, y_train, batch_size=128, nb_epoch=100,validation_data=(X_val,y_val))
+    sq.save("test_trans_model.h5")
 
 # parses flags and calls the `main` function above
 if __name__ == '__main__':
