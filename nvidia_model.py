@@ -17,7 +17,8 @@ flags = tf.app.flags
 FLAGS = flags.FLAGS
 
 
-sample_folder = '/Users/kanhua/Desktop/drive/'
+sample_folder = './data/trip1_rev_middle/'
+img_sub_foler='IMG/'
 
 ch, row, col = 3, 160, 320  # Trimmed image format
 
@@ -47,7 +48,8 @@ def generator(samples, batch_size=32):
 
             images = []
             for batch_sample in batch_samples:
-                name = os.path.join(sample_folder, batch_sample)
+                file_dir,filename=os.path.split(batch_sample)
+                name = os.path.join(sample_folder, img_sub_foler, filename)
                 center_image = cv2.imread(name)
                 #center_image=sess.run(resize_op,feed_dict={single_img_placeholder:center_image})
                 #cv2.imwrite('test.jpg',center_image)
@@ -137,14 +139,14 @@ def main(_):
     nvidia_model.add(Dense(1))
 
     nvidia_model.compile(optimizer='adam',loss='mse')
-    nvidia_model.load_weights('nvidia_model_weights.h5')
+    nvidia_model.load_weights('nvidia_model_weights_v2.h5')
     hist=nvidia_model.fit_generator(train_generator,train_samples.shape[0],nb_epoch=10)
     #nvidia_model.evaluate_generator(validation_generator,validation_samples.shape[0])
     #pickle.dump(hist,open('hist.p','wb'))
 
 
-    nvidia_model.save("model_v2.h5")
-    nvidia_model.save_weights('nvidia_model_weights_v2.h5')
+    nvidia_model.save("model_v3.h5")
+    nvidia_model.save_weights('nvidia_model_weights_v3.h5')
 
 
 # parses flags and calls the `main` function above
