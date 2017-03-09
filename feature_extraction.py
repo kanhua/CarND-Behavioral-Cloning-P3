@@ -64,15 +64,17 @@ def main(_):
     sq=Sequential()
     sq.add(Flatten(input_shape=(X_train[0].shape)))
 
-    sq.add(Dense(output_dim=100))
     sq.add(Dense(output_dim=200))
+    sq.add(Dense(output_dim=100))
+    sq.add(Dense(output_dim=50))
+    sq.add(Dense(output_dim=10))
     sq.add(Dense(output_dim=1))
 
     print(sq.layers[0].output_shape)
     print(sq.layers[1].output_shape)
     sq.compile(optimizer='adam', loss='mse')
 
-    sq.fit(X_train, y_train, batch_size=128, nb_epoch=10,validation_data=(X_val,y_val))
+    sq.fit(X_train, y_train, batch_size=128, nb_epoch=20,validation_data=(X_val,y_val))
 
     sq.save("test_trans_model.h5")
 

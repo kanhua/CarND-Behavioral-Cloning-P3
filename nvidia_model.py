@@ -17,7 +17,7 @@ flags = tf.app.flags
 FLAGS = flags.FLAGS
 
 
-sample_folder = './data/'
+sample_folder = '/Users/kanhua/Desktop/drive/'
 
 ch, row, col = 3, 160, 320  # Trimmed image format
 
@@ -137,11 +137,14 @@ def main(_):
     nvidia_model.add(Dense(1))
 
     nvidia_model.compile(optimizer='adam',loss='mse')
+    nvidia_model.load_weights('nvidia_model_weights.h5')
     hist=nvidia_model.fit_generator(train_generator,train_samples.shape[0],nb_epoch=10)
-    #hist=model.fit_generator(train_generator,small_batch_size*1,nb_epoch=1)
+    #nvidia_model.evaluate_generator(validation_generator,validation_samples.shape[0])
     #pickle.dump(hist,open('hist.p','wb'))
-    nvidia_model.save("test_model.h5")
 
+
+    nvidia_model.save("model_v2.h5")
+    nvidia_model.save_weights('nvidia_model_weights_v2.h5')
 
 
 # parses flags and calls the `main` function above
