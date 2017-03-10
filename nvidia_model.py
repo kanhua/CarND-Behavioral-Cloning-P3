@@ -2,7 +2,7 @@ import pickle
 import numpy as np
 import tensorflow as tf
 from keras.models import Sequential, Model
-from keras.layers import Dense, Activation, \
+from keras.layers import Dense, Dropout, \
     Flatten, Input, Lambda, Cropping2D, Convolution2D
 import pandas as pd
 import os
@@ -45,9 +45,11 @@ def load_sample_df(df: pd.DataFrame, test_size=0.2):
 
 def generator(samples, batch_size=32, shuffle_samples=True):
     num_samples = len(samples)
-    if shuffle_samples:
-        samples = shuffle(samples)
+
     while True:  # Loop forever so the generator never terminates
+        if shuffle_samples:
+            print("reshuffled")
+            samples = shuffle(samples)
         for offset in range(0, num_samples, batch_size):
             batch_samples = samples.iloc[offset:min(offset + batch_size, num_samples), 0]
 
@@ -114,13 +116,16 @@ def main(_):
 
     nvidia_model.add(Flatten())
     nvidia_model.add(Dense(100))
+    nvidia_model.add(Dropout(0.5))
     nvidia_model.add(Dense(50))
+    nvidia_model.add(Dropout(0.5))
     nvidia_model.add(Dense(10))
     nvidia_model.add(Dense(1))
 
     nvidia_model.compile(optimizer='adam', loss='mse')
     # nvidia_model.load_weights('nvidia_model_weights_v2.h5')
-    hist = nvidia_model.fit_generator(train_generator, train_samples.shape[0], nb_epoch=10)
+    hist = nvidia_model.fit_generator(train_generator, train_samples.shape[0], nb_epoch=10,
+                                      validation_data=validation_generator,nb_val_samples=validation_samples.shape[0])
     # nvidia_model.evaluate_generator(validation_generator,validation_samples.shape[0])
 
     nvidia_model.save("model_v4.h5")
