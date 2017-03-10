@@ -17,7 +17,7 @@ flags = tf.app.flags
 FLAGS = flags.FLAGS
 
 
-sample_folder = './data/trip1_rev_middle/'
+sample_folder = './data/trip1_rev_mix/'
 img_sub_foler='IMG/'
 
 ch, row, col = 3, 160, 320  # Trimmed image format
