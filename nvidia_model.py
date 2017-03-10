@@ -4,20 +4,18 @@ import tensorflow as tf
 from keras.models import Sequential,Model
 from keras.layers import Dense,Activation,\
     Flatten,Input,Lambda,Cropping2D,Convolution2D
-from keras.applications.vgg16 import VGG16
 import pandas as pd
 import os
 from sklearn.model_selection import train_test_split
-from keras.applications.resnet50 import preprocess_input
 import cv2
-import keras.backend as K
-import matplotlib.pyplot as plt
+import typing
+from fix_path import update_df
 
 flags = tf.app.flags
 FLAGS = flags.FLAGS
 
 
-sample_folder = './data/trip1_rev_mix/'
+parent_data_folder='./data/'
 img_sub_foler='IMG/'
 
 ch, row, col = 3, 160, 320  # Trimmed image format
@@ -30,12 +28,25 @@ resize_op = tf.image.resize_images(img_placeholder, (p_row, p_col), method=0)
 #resize_op = tf.image.resize_image_with_crop_or_pad(single_img_placeholder, p_row, p_col)
 
 
-def load_samples_df(test_size=0.2):
-    sample_df = pd.DataFrame.from_csv(os.path.join(sample_folder, 'driving_log.csv'), index_col=None)
+def load_multi_dataset(data_dirs:list):
 
-    train, val = train_test_split(sample_df, test_size=test_size)
 
-    return train, val
+    data_dirs=map(lambda x: os.path.join(parent_data_folder,x),data_dirs)
+
+    all_df=[]
+    for dir in data_dirs:
+        df=update_df(dir)
+        all_df.append(df)
+
+    all_df=pd.concat(all_df)
+
+    return all_df
+
+def load_sample_df(df:pd.DataFrame,test_size=0.2):
+
+    train, val = train_test_split(df, test_size=test_size)
+
+    return train,val
 
 
 def generator(samples, batch_size=32):
@@ -48,9 +59,7 @@ def generator(samples, batch_size=32):
 
             images = []
             for batch_sample in batch_samples:
-                file_dir,filename=os.path.split(batch_sample)
-                name = os.path.join(sample_folder, img_sub_foler, filename)
-                center_image = cv2.imread(name)
+                center_image = cv2.imread(batch_sample)
                 #center_image=sess.run(resize_op,feed_dict={single_img_placeholder:center_image})
                 #cv2.imwrite('test.jpg',center_image)
                 images.append(center_image)
@@ -108,11 +117,13 @@ def resize_image(input_image):
 def main(_):
     # load bottleneck data
 
+    train_dataset_folder=["official_baseline/","trip1_middle/"]
 
-    train_samples, validation_samples = load_samples_df(test_size=0.2)
+    df=load_multi_dataset(train_dataset_folder)
+
+    train_samples, validation_samples = load_sample_df(df,test_size=0.2)
 
     batch_size=128
-    small_batch_size=12
 
 
     train_generator = generator(train_samples, batch_size=batch_size)
@@ -139,14 +150,14 @@ def main(_):
     nvidia_model.add(Dense(1))
 
     nvidia_model.compile(optimizer='adam',loss='mse')
-    nvidia_model.load_weights('nvidia_model_weights_v2.h5')
+    #nvidia_model.load_weights('nvidia_model_weights_v2.h5')
     hist=nvidia_model.fit_generator(train_generator,train_samples.shape[0],nb_epoch=10)
     #nvidia_model.evaluate_generator(validation_generator,validation_samples.shape[0])
     #pickle.dump(hist,open('hist.p','wb'))
 
 
-    nvidia_model.save("model_v3.h5")
-    nvidia_model.save_weights('nvidia_model_weights_v3.h5')
+    nvidia_model.save("model_test.h5")
+    #nvidia_model.save_weights('nvidia_model_weights_v3.h5')
 
 
 # parses flags and calls the `main` function above
