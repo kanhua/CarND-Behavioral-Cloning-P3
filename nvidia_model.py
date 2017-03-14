@@ -20,7 +20,7 @@ parent_data_folder = './data/'
 img_sub_foler = 'IMG/'
 ch, row, col = 3, 160, 320
 ch, p_row, p_col = 3, 160, 320
-train_dataset_folder = ["official_baseline/"]
+train_dataset_folder = ["official_baseline/","trip1_off_recover/"]
 batch_size = 128
 
 
@@ -142,7 +142,7 @@ def main(_):
 
     nvidia_model.compile(optimizer='adam', loss='mse')
     # nvidia_model.load_weights('nvidia_model_weights_v2.h5')
-    hist = nvidia_model.fit_generator(train_generator, train_samples.shape[0]*2, nb_epoch=10,
+    hist = nvidia_model.fit_generator(train_generator, train_samples.shape[0]*2, nb_epoch=4,
                                       validation_data=validation_generator,nb_val_samples=validation_samples.shape[0])
     # nvidia_model.evaluate_generator(validation_generator,validation_samples.shape[0])
 
