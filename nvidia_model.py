@@ -38,14 +38,16 @@ def load_multi_dataset(data_dirs: list):
 
 def filter_dataset(df):
 
-    idx=np.abs(df.iloc[:,3].values)>0.01
+    idx=np.abs(df.iloc[:,3].values)==0.0
+    non_zero_idx=np.abs(df.iloc[:,3].values)!=0.0
 
-    ndf=df.iloc[idx,:]
+    zero_len=len(idx)
 
-    ndf=pd.concat([df,ndf],axis=0)
+    sel_idx=np.random.choice(idx,int(zero_len/10))
+
+    ndf=pd.concat([df.iloc[sel_idx,:],df.iloc[non_zero_idx,:]],axis=0)
 
     return ndf
-
 
 
 def load_sample_df(df: pd.DataFrame, test_size=0.2):
@@ -146,8 +148,8 @@ def main(_):
                                       validation_data=validation_generator,nb_val_samples=validation_samples.shape[0])
     # nvidia_model.evaluate_generator(validation_generator,validation_samples.shape[0])
 
-    nvidia_model.save("model_v4.h5")
-    nvidia_model.save_weights('nvidia_model_weights_v4.h5')
+    nvidia_model.save("model_v5.h5")
+    nvidia_model.save_weights('nvidia_model_weights_v5.h5')
 
 
 # parses flags and calls the `main` function above
