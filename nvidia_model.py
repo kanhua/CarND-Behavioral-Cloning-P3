@@ -20,7 +20,7 @@ parent_data_folder = './data/'
 img_sub_foler = 'IMG/'
 ch, row, col = 3, 160, 320
 ch, p_row, p_col = 3, 160, 320
-train_dataset_folder = ["official_baseline/", "trip1_middle/", "trip1_off_recover/", "trip1_rev_mix/"]
+train_dataset_folder = ["official_baseline/"]
 batch_size = 128
 
 
@@ -35,6 +35,17 @@ def load_multi_dataset(data_dirs: list):
     all_df = pd.concat(all_df)
 
     return all_df
+
+def filter_dataset(df):
+
+    idx=np.abs(df.iloc[:,3].values)>0.01
+
+    ndf=df.iloc[idx,:]
+
+    ndf=pd.concat([df,ndf],axis=0)
+
+    return ndf
+
 
 
 def load_sample_df(df: pd.DataFrame, test_size=0.2):
@@ -60,10 +71,17 @@ def generator(samples, batch_size=32, shuffle_samples=True):
 
             # trim image to only see section with road
             X_train = np.array(images)
-
             y_train = samples.iloc[offset:min(offset + batch_size, num_samples), 3]
 
-            yield X_train, y_train
+            #filter out index that steering>0
+            #idx=np.abs(y_train.values)>0.01
+
+            nX_train=np.flip(X_train,axis=3)
+
+            cX_train=np.concatenate((X_train,nX_train),axis=0)
+            cy_train=np.concatenate((y_train,y_train),axis=0)
+
+            yield cX_train, cy_train
 
 
 def load_bottleneck_data(training_file, validation_file):
@@ -98,6 +116,8 @@ def main(_):
 
     train_samples, validation_samples = load_sample_df(df, test_size=0.2)
 
+    train_samples=filter_dataset(train_samples)
+
     train_generator = generator(train_samples, batch_size=batch_size)
     validation_generator = generator(validation_samples, batch_size=batch_size)
 
@@ -109,9 +129,7 @@ def main(_):
     nvidia_model.add(Convolution2D(24, 5, 5, subsample=(2, 2), activation='relu'))
     nvidia_model.add(Convolution2D(36, 5, 5, subsample=(2, 2), activation='relu'))
     nvidia_model.add(Convolution2D(48, 5, 5, subsample=(2, 2), activation='relu'))
-
     nvidia_model.add(Convolution2D(64, 3, 3, activation='relu'))
-
     nvidia_model.add(Convolution2D(64, 3, 3, activation='relu'))
 
     nvidia_model.add(Flatten())
@@ -124,7 +142,7 @@ def main(_):
 
     nvidia_model.compile(optimizer='adam', loss='mse')
     # nvidia_model.load_weights('nvidia_model_weights_v2.h5')
-    hist = nvidia_model.fit_generator(train_generator, train_samples.shape[0], nb_epoch=10,
+    hist = nvidia_model.fit_generator(train_generator, train_samples.shape[0]*2, nb_epoch=10,
                                       validation_data=validation_generator,nb_val_samples=validation_samples.shape[0])
     # nvidia_model.evaluate_generator(validation_generator,validation_samples.shape[0])
 
