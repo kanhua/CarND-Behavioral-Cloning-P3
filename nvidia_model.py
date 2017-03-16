@@ -4,6 +4,7 @@ import tensorflow as tf
 from keras.models import Sequential, Model
 from keras.layers import Dense, Dropout, \
     Flatten, Input, Lambda, Cropping2D, Convolution2D
+from keras.callbacks import ModelCheckpoint
 import pandas as pd
 import os
 from sklearn.model_selection import train_test_split
@@ -11,6 +12,7 @@ from sklearn.utils import shuffle
 import cv2
 import typing
 from fix_path import update_df
+import random
 
 flags = tf.app.flags
 FLAGS = flags.FLAGS
@@ -59,7 +61,6 @@ def augment_brightness_camera_images(image):
     :return:
     """
 
-
     image1 = cv2.cvtColor(image,cv2.COLOR_RGB2HSV)
     image1 = np.array(image1, dtype = np.float64)
     random_bright = .5+np.random.uniform()
@@ -77,7 +78,12 @@ def load_sample_df(df: pd.DataFrame, test_size=0.2):
     return train, val
 
 
-def generator(samples, batch_size=32, shuffle_samples=True):
+center_cam={'cam_index':0,'steering_adjust':0}
+right_cam={'cam_index':2,'steering_adjust':-0.25}
+left_cam={'cam_index':1,'steering_adjust':0.25}
+
+
+def generator(samples, batch_size=32, shuffle_samples=True,side_cam=False):
     num_samples = len(samples)
 
     while True:  # Loop forever so the generator never terminates
@@ -85,7 +91,12 @@ def generator(samples, batch_size=32, shuffle_samples=True):
             print("reshuffled")
             samples = shuffle(samples)
         for offset in range(0, num_samples, batch_size):
-            batch_samples = samples.iloc[offset:min(offset + batch_size, num_samples), 0]
+            if side_cam==True:
+                cam=random.choice([center_cam,right_cam,left_cam])
+            else:
+                cam=center_cam
+
+            batch_samples = samples.iloc[offset:min(offset + batch_size, num_samples), cam['cam_index']]
 
             images = []
             for batch_sample in batch_samples:
@@ -98,7 +109,7 @@ def generator(samples, batch_size=32, shuffle_samples=True):
 
             # trim image to only see section with road
             X_train = np.array(images)
-            y_train = samples.iloc[offset:min(offset + batch_size, num_samples), 3]
+            y_train = samples.iloc[offset:min(offset + batch_size, num_samples), 3]+cam['steering_adjust']
 
             #filter out index that steering>0
             #idx=np.abs(y_train.values)>0.01
@@ -145,8 +156,8 @@ def main(_):
 
     train_samples=filter_dataset(train_samples)
 
-    train_generator = generator(train_samples, batch_size=batch_size)
-    validation_generator = generator(validation_samples, batch_size=batch_size)
+    train_generator = generator(train_samples, batch_size=batch_size,side_cam=True)
+    validation_generator = generator(validation_samples, batch_size=batch_size,side_cam=True)
 
     nvidia_model = Sequential()
 
@@ -169,12 +180,24 @@ def main(_):
 
     nvidia_model.compile(optimizer='adam', loss='mse')
     # nvidia_model.load_weights('nvidia_model_weights_v2.h5')
-    hist = nvidia_model.fit_generator(train_generator, train_samples.shape[0]*2, nb_epoch=10,
-                                      validation_data=validation_generator,nb_val_samples=validation_samples.shape[0])
+
+    checkpoint = ModelCheckpoint(filepath='./_model_checkpoints/model-{epoch:02d}.h5')
+    callback_list = [checkpoint]
+
+    hist = nvidia_model.fit_generator(train_generator,
+                                      train_samples.shape[0]*2,
+                                      nb_epoch=10,
+                                      validation_data=validation_generator,
+                                      nb_val_samples=validation_samples.shape[0],
+                                      callbacks=callback_list)
+
     # nvidia_model.evaluate_generator(validation_generator,validation_samples.shape[0])
 
-    nvidia_model.save("model_v6.h5")
-    nvidia_model.save_weights('nvidia_model_weights_v6.h5')
+    #with open('model_hist.p','wb') as fp:
+    #    pickle.dump(hist['loss'],fp)
+
+    nvidia_model.save("model_v7.h5")
+    nvidia_model.save_weights('nvidia_model_weights_v7.h5')
 
 
 # parses flags and calls the `main` function above
