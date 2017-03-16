@@ -22,7 +22,7 @@ parent_data_folder = './data/'
 img_sub_foler = 'IMG/'
 ch, row, col = 3, 160, 320
 ch, p_row, p_col = 3, 160, 320
-train_dataset_folder = ["official_baseline/","trip1_off_recover/","track2_1/"]
+train_dataset_folder = ["official_baseline/","trip1_off_recover/","track2_1/","track2_2/","track2_3/"]
 batch_size = 128
 
 
@@ -79,8 +79,8 @@ def load_sample_df(df: pd.DataFrame, test_size=0.2):
 
 
 center_cam={'cam_index':0,'steering_adjust':0}
-right_cam={'cam_index':2,'steering_adjust':-0.25}
-left_cam={'cam_index':1,'steering_adjust':0.25}
+right_cam={'cam_index':2,'steering_adjust':-0.24}
+left_cam={'cam_index':1,'steering_adjust':0.24}
 
 
 def generator(samples, batch_size=32, shuffle_samples=True,side_cam=False):
@@ -179,16 +179,16 @@ def main(_):
     nvidia_model.add(Dense(1))
 
     nvidia_model.compile(optimizer='adam', loss='mse')
-    # nvidia_model.load_weights('nvidia_model_weights_v2.h5')
+    #nvidia_model.load_weights('nvidia_model_weights_v7_1.h5')
 
     checkpoint = ModelCheckpoint(filepath='./_model_checkpoints/model-{epoch:02d}.h5')
     callback_list = [checkpoint]
 
     hist = nvidia_model.fit_generator(train_generator,
                                       train_samples.shape[0]*2,
-                                      nb_epoch=10,
+                                      nb_epoch=20,
                                       validation_data=validation_generator,
-                                      nb_val_samples=validation_samples.shape[0],
+                                      nb_val_samples=validation_samples.shape[0]*2,
                                       callbacks=callback_list)
 
     # nvidia_model.evaluate_generator(validation_generator,validation_samples.shape[0])
@@ -196,8 +196,8 @@ def main(_):
     #with open('model_hist.p','wb') as fp:
     #    pickle.dump(hist['loss'],fp)
 
-    nvidia_model.save("model_v7.h5")
-    nvidia_model.save_weights('nvidia_model_weights_v7.h5')
+    nvidia_model.save("model_v7_2.h5")
+    nvidia_model.save_weights('nvidia_model_weights_v7_2.h5')
 
 
 # parses flags and calls the `main` function above
