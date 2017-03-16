@@ -22,7 +22,8 @@ parent_data_folder = './data/'
 img_sub_foler = 'IMG/'
 ch, row, col = 3, 160, 320
 ch, p_row, p_col = 3, 160, 320
-train_dataset_folder = ["official_baseline/","trip1_off_recover/","track2_1/","track2_2/","track2_3/"]
+train_dataset_folder = ["official_baseline/","trip1_off_recover/",
+                        "track2_1/","track2_2/","track2_3/","track2_rec_1"]
 batch_size = 128
 
 
@@ -196,8 +197,8 @@ def main(_):
     #with open('model_hist.p','wb') as fp:
     #    pickle.dump(hist['loss'],fp)
 
-    nvidia_model.save("model_v7_2.h5")
-    nvidia_model.save_weights('nvidia_model_weights_v7_2.h5')
+    nvidia_model.save("model_v8.h5")
+    nvidia_model.save_weights('nvidia_model_weights_v8.h5')
 
 
 # parses flags and calls the `main` function above
