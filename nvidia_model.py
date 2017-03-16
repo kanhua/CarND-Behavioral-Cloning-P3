@@ -20,7 +20,7 @@ parent_data_folder = './data/'
 img_sub_foler = 'IMG/'
 ch, row, col = 3, 160, 320
 ch, p_row, p_col = 3, 160, 320
-train_dataset_folder = ["official_baseline/","trip1_off_recover/"]
+train_dataset_folder = ["official_baseline/","trip1_off_recover/","track2_1/"]
 batch_size = 128
 
 
@@ -43,11 +43,32 @@ def filter_dataset(df):
 
     zero_len=len(idx)
 
-    sel_idx=np.random.choice(idx,int(zero_len/10))
+    sel_idx=np.random.choice(idx,int(zero_len/20))
 
     ndf=pd.concat([df.iloc[sel_idx,:],df.iloc[non_zero_idx,:]],axis=0)
 
     return ndf
+
+def augment_brightness_camera_images(image):
+    """
+    Augmentation of brightness.
+    This code is from
+    https://chatbotslife.com/using-augmentation-to-mimic-human-driving-496b569760a9#.gv8islemq
+
+    :param image:
+    :return:
+    """
+
+
+    image1 = cv2.cvtColor(image,cv2.COLOR_RGB2HSV)
+    image1 = np.array(image1, dtype = np.float64)
+    random_bright = .5+np.random.uniform()
+    image1[:,:,2] = image1[:,:,2]*random_bright
+    image1[:,:,2][image1[:,:,2]>255]  = 255
+    image1 = np.array(image1, dtype = np.uint8)
+    image1 = cv2.cvtColor(image1,cv2.COLOR_HSV2RGB)
+    return image1
+
 
 
 def load_sample_df(df: pd.DataFrame, test_size=0.2):
@@ -69,6 +90,10 @@ def generator(samples, batch_size=32, shuffle_samples=True):
             images = []
             for batch_sample in batch_samples:
                 center_image = cv2.imread(batch_sample)
+
+                #augment new images
+                augment_brightness_camera_images(center_image)
+
                 images.append(center_image)
 
             # trim image to only see section with road
@@ -144,14 +169,15 @@ def main(_):
 
     nvidia_model.compile(optimizer='adam', loss='mse')
     # nvidia_model.load_weights('nvidia_model_weights_v2.h5')
-    hist = nvidia_model.fit_generator(train_generator, train_samples.shape[0]*2, nb_epoch=4,
+    hist = nvidia_model.fit_generator(train_generator, train_samples.shape[0]*2, nb_epoch=10,
                                       validation_data=validation_generator,nb_val_samples=validation_samples.shape[0])
     # nvidia_model.evaluate_generator(validation_generator,validation_samples.shape[0])
 
-    nvidia_model.save("model_v5.h5")
-    nvidia_model.save_weights('nvidia_model_weights_v5.h5')
+    nvidia_model.save("model_v6.h5")
+    nvidia_model.save_weights('nvidia_model_weights_v6.h5')
 
 
 # parses flags and calls the `main` function above
 if __name__ == '__main__':
     tf.app.run()
+
