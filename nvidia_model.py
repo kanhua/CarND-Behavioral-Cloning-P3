@@ -13,6 +13,7 @@ import cv2
 import typing
 from fix_path import update_df
 import random
+import keras.backend as K
 
 flags = tf.app.flags
 FLAGS = flags.FLAGS
@@ -21,13 +22,16 @@ FLAGS = flags.FLAGS
 parent_data_folder = './data/'
 img_sub_foler = 'IMG/'
 ch, row, col = 3, 160, 320
-ch, p_row, p_col = 3, 160, 320
+ch, p_row, p_col = 3, 80, 160
 train_dataset_folder = ["official_baseline/","trip1_off_recover/",
                         "track2_1/","track2_2/","track2_3/",
                         "track2_4/","track2_5/",
                         "track2_rec_1","track2_rec_2"]
 train_side_camera=True
 batch_size = 128
+
+img_placeholder = tf.placeholder("uint8", (None, 160, 320, 3))
+resize_op = tf.image.resize_images(img_placeholder, (p_row, p_col), method=0)
 
 
 def load_multi_dataset(data_dirs: list):
@@ -87,7 +91,7 @@ right_cam={'cam_index':2,'steering_adjust':-0.24}
 left_cam={'cam_index':1,'steering_adjust':0.24}
 
 
-def generator(samples, batch_size=32, shuffle_samples=True,side_cam=False):
+def generator(samples, batch_size=32, shuffle_samples=True,side_cam=False,tfsess=None):
     num_samples = len(samples)
 
     while True:  # Loop forever so the generator never terminates
@@ -106,8 +110,9 @@ def generator(samples, batch_size=32, shuffle_samples=True,side_cam=False):
             for batch_sample in batch_samples:
                 center_image = cv2.imread(batch_sample)
 
+                center_image=cv2.resize(center_image,dsize=(0,0),fx=0.5,fy=0.5)
                 #augment new images
-                augment_brightness_camera_images(center_image)
+                center_image=augment_brightness_camera_images(center_image)
 
                 images.append(center_image)
 
@@ -167,9 +172,13 @@ def main(_):
 
     nvidia_model = Sequential()
 
-    nvidia_model.add(Lambda(lambda x: x / 255.0 - 0.5, input_shape=(row, col, ch)))
 
-    nvidia_model.add(Cropping2D(cropping=((70, 25), (0, 0))))
+    nvidia_model.add(Lambda(lambda x: x / 255.0 - 0.5, input_shape=(p_row, p_col, ch)))
+
+    #nvidia_model.add(Cropping2D(cropping=((70, 24), (0, 0))))
+    #nvidia_model.add(Cropping2D(cropping=((35, 12), (0, 0))))
+
+    #nvidia_model.add(Lambda(lambda image: K.resize_images(image, (160-94)/2,160,'tf')))
     nvidia_model.add(Convolution2D(24, 5, 5, subsample=(2, 2), activation='relu'))
     nvidia_model.add(Convolution2D(36, 5, 5, subsample=(2, 2), activation='relu'))
     nvidia_model.add(Convolution2D(48, 5, 5, subsample=(2, 2), activation='relu'))
@@ -185,14 +194,14 @@ def main(_):
     nvidia_model.add(Dense(1))
 
     nvidia_model.compile(optimizer='adam', loss='mse')
-    #nvidia_model.load_weights('nvidia_model_weights_v7_1.h5')
+    #nvidia_model.load_weights('nvidia_model_weights_v11_2.h5')
 
     checkpoint = ModelCheckpoint(filepath='./_model_checkpoints/model-{epoch:02d}.h5')
     callback_list = [checkpoint]
 
     hist = nvidia_model.fit_generator(train_generator,
                                       train_samples.shape[0]*2,
-                                      nb_epoch=20,
+                                      nb_epoch=5,
                                       validation_data=validation_generator,
                                       nb_val_samples=validation_samples.shape[0]*2,
                                       callbacks=callback_list)
@@ -202,8 +211,8 @@ def main(_):
     #with open('model_hist.p','wb') as fp:
     #    pickle.dump(hist['loss'],fp)
 
-    nvidia_model.save("model_v10.h5")
-    nvidia_model.save_weights('nvidia_model_weights_v10.h5')
+    nvidia_model.save("model_v11_3.h5")
+    nvidia_model.save_weights('nvidia_model_weights_v11_3.h5')
 
 
 # parses flags and calls the `main` function above
