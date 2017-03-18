@@ -47,6 +47,7 @@ def load_multi_dataset(data_dirs: list):
 
 def filter_dataset(df):
 
+    print("samples refiltered")
     idx=np.abs(df.iloc[:,3].values)==0.0
     non_zero_idx=np.abs(df.iloc[:,3].values)!=0.0
 
@@ -90,13 +91,24 @@ right_cam={'cam_index':2,'steering_adjust':-0.16}
 left_cam={'cam_index':1,'steering_adjust':0.16}
 
 
-def generator(samples, batch_size=32, shuffle_samples=True,side_cam=False,tfsess=None):
+def generator(input_samples, batch_size=32, shuffle_samples=True,side_cam=False,filter=False):
+
+    if filter==True:
+        samples=filter_dataset(input_samples)
+    else:
+        samples=input_samples
     num_samples = len(samples)
+
 
     while True:  # Loop forever so the generator never terminates
         if shuffle_samples:
+            if filter == True:
+                samples = filter_dataset(input_samples)
+            else:
+                samples = input_samples
             print("reshuffled")
             samples = shuffle(samples)
+        num_samples = len(samples)
         for offset in range(0, num_samples, batch_size):
             if side_cam==True:
                 cam=random.choice([center_cam,right_cam,left_cam])
@@ -162,12 +174,14 @@ def main(_):
 
     train_samples, validation_samples = load_sample_df(df, test_size=0.2)
 
-    train_samples=filter_dataset(train_samples)
+    #train_samples=filter_dataset(train_samples)
+    dummy_train_samples=filter_dataset(train_samples)
+    var_sample_num=dummy_train_samples.shape[0]
 
     train_generator = generator(train_samples,
-                                batch_size=batch_size,side_cam=train_side_camera)
+                                batch_size=batch_size,side_cam=train_side_camera,filter=True)
     validation_generator = generator(validation_samples,
-                                     batch_size=batch_size,side_cam=train_side_camera)
+                                     batch_size=batch_size,side_cam=train_side_camera,filter=False)
 
     nvidia_model = Sequential()
 
@@ -199,8 +213,8 @@ def main(_):
     callback_list = [checkpoint]
 
     hist = nvidia_model.fit_generator(train_generator,
-                                      train_samples.shape[0]*2,
-                                      nb_epoch=40,
+                                      var_sample_num*2,
+                                      nb_epoch=20,
                                       validation_data=validation_generator,
                                       nb_val_samples=validation_samples.shape[0]*2,
                                       callbacks=callback_list)
@@ -210,8 +224,8 @@ def main(_):
     #with open('model_hist.p','wb') as fp:
     #    pickle.dump(hist['loss'],fp)
 
-    nvidia_model.save("model_v13.h5")
-    nvidia_model.save_weights('nvidia_model_weights_v13.h5')
+    nvidia_model.save("model_v14.h5")
+    nvidia_model.save_weights('nvidia_model_weights_v14.h5')
 
 
 # parses flags and calls the `main` function above
