@@ -209,7 +209,7 @@ def main(_):
 
     hist = nvidia_model.fit_generator(train_generator,
                                       var_sample_num*2,
-                                      nb_epoch=20,
+                                      nb_epoch=60,
                                       validation_data=validation_generator,
                                       nb_val_samples=validation_samples.shape[0]*2,
                                       callbacks=callback_list)
