@@ -23,9 +23,8 @@ parent_data_folder = './data/'
 img_sub_foler = 'IMG/'
 ch, row, col = 3, 160, 320
 ch, p_row, p_col = 3, 80, 160
-train_dataset_folder = ["official_baseline/","trip1_off_recover/",
+train_dataset_folder = ["official_baseline/","trip1_off_recover",
                         "track2_1/","track2_2/","track2_3/",
-                        "track2_4/","track2_5/",
                         "track2_rec_1","track2_rec_2"]
 train_side_camera=True
 batch_size = 128
@@ -87,8 +86,8 @@ def load_sample_df(df: pd.DataFrame, test_size=0.2):
 
 
 center_cam={'cam_index':0,'steering_adjust':0}
-right_cam={'cam_index':2,'steering_adjust':-0.24}
-left_cam={'cam_index':1,'steering_adjust':0.24}
+right_cam={'cam_index':2,'steering_adjust':-0.16}
+left_cam={'cam_index':1,'steering_adjust':0.16}
 
 
 def generator(samples, batch_size=32, shuffle_samples=True,side_cam=False,tfsess=None):
@@ -201,7 +200,7 @@ def main(_):
 
     hist = nvidia_model.fit_generator(train_generator,
                                       train_samples.shape[0]*2,
-                                      nb_epoch=5,
+                                      nb_epoch=40,
                                       validation_data=validation_generator,
                                       nb_val_samples=validation_samples.shape[0]*2,
                                       callbacks=callback_list)
@@ -211,8 +210,8 @@ def main(_):
     #with open('model_hist.p','wb') as fp:
     #    pickle.dump(hist['loss'],fp)
 
-    nvidia_model.save("model_v11_3.h5")
-    nvidia_model.save_weights('nvidia_model_weights_v11_3.h5')
+    nvidia_model.save("model_v12.h5")
+    nvidia_model.save_weights('nvidia_model_weights_v12.h5')
 
 
 # parses flags and calls the `main` function above
