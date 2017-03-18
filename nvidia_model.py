@@ -200,7 +200,7 @@ def main(_):
 
     nvidia_model.add(Flatten())
     nvidia_model.add(Dense(100))
-    #nvidia_model.add(Dropout(0.5))
+    nvidia_model.add(Dropout(0.5))
     nvidia_model.add(Dense(50))
     #nvidia_model.add(Dropout(0.5))
     nvidia_model.add(Dense(10))
@@ -224,8 +224,8 @@ def main(_):
     #with open('model_hist.p','wb') as fp:
     #    pickle.dump(hist['loss'],fp)
 
-    nvidia_model.save("model_v14.h5")
-    nvidia_model.save_weights('nvidia_model_weights_v14.h5')
+    nvidia_model.save("model_v14_1.h5")
+    nvidia_model.save_weights('nvidia_model_weights_v14_1.h5')
 
 
 # parses flags and calls the `main` function above
