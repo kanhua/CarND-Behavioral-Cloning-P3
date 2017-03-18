@@ -24,7 +24,7 @@ img_sub_foler = 'IMG/'
 ch, row, col = 3, 160, 320
 ch, p_row, p_col = 3, 80, 160
 train_dataset_folder = ["official_baseline/","trip1_off_recover",
-                        "track2_1/","track2_2/","track2_3/","track_2_6/",
+                        "track2_1/","track2_2/","track2_3/","track2_6/",
                         "track2_rec_1","track2_rec_2"]
 train_side_camera=True
 batch_size = 128
@@ -45,7 +45,7 @@ def load_multi_dataset(data_dirs: list):
 
     return all_df
 
-def filter_dataset(df):
+def filter_dataset(df,portion=5):
 
     print("samples refiltered")
     idx=np.abs(df.iloc[:,3].values)==0.0
@@ -53,7 +53,7 @@ def filter_dataset(df):
 
     zero_len=len(idx)
 
-    sel_idx=np.random.choice(idx,int(zero_len/20))
+    sel_idx=np.random.choice(idx,int(zero_len/portion))
 
     ndf=pd.concat([df.iloc[sel_idx,:],df.iloc[non_zero_idx,:]],axis=0)
 
@@ -93,19 +93,13 @@ left_cam={'cam_index':1,'steering_adjust':0.16}
 
 def generator(input_samples, batch_size=32, shuffle_samples=True,side_cam=False,filter=False):
 
-    if filter==True:
-        samples=filter_dataset(input_samples)
-    else:
-        samples=input_samples
-    num_samples = len(samples)
-
-
     while True:  # Loop forever so the generator never terminates
+        if filter==True:
+            samples = filter_dataset(input_samples)
+        else:
+            samples = input_samples
+
         if shuffle_samples:
-            if filter == True:
-                samples = filter_dataset(input_samples)
-            else:
-                samples = input_samples
             print("reshuffled")
             samples = shuffle(samples)
         num_samples = len(samples)
@@ -183,6 +177,7 @@ def main(_):
     validation_generator = generator(validation_samples,
                                      batch_size=batch_size,side_cam=train_side_camera,filter=False)
 
+
     nvidia_model = Sequential()
 
 
@@ -207,7 +202,7 @@ def main(_):
     nvidia_model.add(Dense(1))
 
     nvidia_model.compile(optimizer='adam', loss='mse')
-    #nvidia_model.load_weights('nvidia_model_weights_v11_2.h5')
+    nvidia_model.load_weights('nvidia_model_weights_v14_1.h5')
 
     checkpoint = ModelCheckpoint(filepath='./_model_checkpoints/model-{epoch:02d}.h5')
     callback_list = [checkpoint]
@@ -224,8 +219,8 @@ def main(_):
     #with open('model_hist.p','wb') as fp:
     #    pickle.dump(hist['loss'],fp)
 
-    nvidia_model.save("model_v14_1.h5")
-    nvidia_model.save_weights('nvidia_model_weights_v14_1.h5')
+    nvidia_model.save("model_v14_2.h5")
+    nvidia_model.save_weights('nvidia_model_weights_v14_2.h5')
 
 
 # parses flags and calls the `main` function above
