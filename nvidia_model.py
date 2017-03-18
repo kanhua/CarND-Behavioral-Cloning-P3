@@ -45,7 +45,7 @@ def load_multi_dataset(data_dirs: list):
 
     return all_df
 
-def filter_dataset(df,portion=5):
+def filter_dataset(df,portion=20):
 
     print("samples refiltered")
     idx=np.abs(df.iloc[:,3].values)==0.0
