@@ -194,9 +194,7 @@ def main(_):
 
     nvidia_model.add(Flatten())
     nvidia_model.add(Dense(100))
-    nvidia_model.add(Dropout(0.5))
     nvidia_model.add(Dense(50))
-    nvidia_model.add(Dropout(0.5))
     nvidia_model.add(Dense(10))
     nvidia_model.add(Dense(1))
 
@@ -208,7 +206,7 @@ def main(_):
 
     hist = nvidia_model.fit_generator(train_generator,
                                       var_sample_num*2,
-                                      nb_epoch=40,
+                                      nb_epoch=20,
                                       validation_data=validation_generator,
                                       nb_val_samples=validation_samples.shape[0]*2,
                                       callbacks=callback_list)
@@ -218,8 +216,8 @@ def main(_):
     #with open('model_hist.p','wb') as fp:
     #    pickle.dump(hist['loss'],fp)
 
-    nvidia_model.save("model_v17.h5")
-    nvidia_model.save_weights('nvidia_model_weights_v17.h5')
+    nvidia_model.save("model_v18.h5")
+    nvidia_model.save_weights('nvidia_model_weights_v18.h5')
 
 
 # parses flags and calls the `main` function above
