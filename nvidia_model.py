@@ -24,7 +24,7 @@ img_sub_foler = 'IMG/'
 ch, row, col = 3, 160, 320
 ch, p_row, p_col = 3, 80, 160
 train_dataset_folder = ["official_baseline/","trip1_off_recover",
-                        "track2_7",
+                        "track2_7","track2_5","track2_6","track2_2","track2_3",
                         "track2_rec_1","track2_rec_2","track2_rec_3"]
 train_side_camera=True
 batch_size = 128
