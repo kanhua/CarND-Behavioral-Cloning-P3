@@ -26,6 +26,7 @@ ch, p_row, p_col = 3, 80, 160
 train_dataset_folder = ["official_baseline/","trip1_off_recover",
                         "track2_7","track2_8","track2_9",
                         "track2_rec_5","track2_rec_6"]
+val_dataset_folder=["track2_2"]
 train_side_camera=True
 batch_size = 128
 
@@ -163,9 +164,9 @@ def load_bottleneck_data(training_file, validation_file):
 def main(_):
     # load bottleneck data
 
-    df = load_multi_dataset(train_dataset_folder)
+    train_samples = load_multi_dataset(train_dataset_folder)
 
-    train_samples, validation_samples = load_sample_df(df, test_size=0.2)
+    validation_samples=load_multi_dataset(val_dataset_folder)
 
     #train_samples=filter_dataset(train_samples)
     dummy_train_samples=filter_dataset(train_samples)
@@ -199,7 +200,7 @@ def main(_):
     nvidia_model.add(Dense(1))
 
     nvidia_model.compile(optimizer='adam', loss='mse')
-    #nvidia_model.load_weights('nvidia_model_weights_v14_1.h5')
+    nvidia_model.load_weights('nvidia_model_weights_v18.h5')
 
     checkpoint = ModelCheckpoint(filepath='./_model_checkpoints/model-{epoch:02d}.h5')
     callback_list = [checkpoint]
@@ -216,8 +217,8 @@ def main(_):
     #with open('model_hist.p','wb') as fp:
     #    pickle.dump(hist['loss'],fp)
 
-    nvidia_model.save("model_v18.h5")
-    nvidia_model.save_weights('nvidia_model_weights_v18.h5')
+    nvidia_model.save("model_v19.h5")
+    nvidia_model.save_weights('nvidia_model_weights_v19.h5')
 
 
 # parses flags and calls the `main` function above
