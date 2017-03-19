@@ -23,10 +23,8 @@ parent_data_folder = './data/'
 img_sub_foler = 'IMG/'
 ch, row, col = 3, 160, 320
 ch, p_row, p_col = 3, 80, 160
-train_dataset_folder = ["official_baseline/","trip1_off_recover",
-                        "track2_7","track2_8","track2_9",
-                        "track2_rec_5","track2_rec_6"]
-val_dataset_folder=["track2_2"]
+train_dataset_folder = ["track1_new_1/","track1_rec_1/"]
+val_dataset_folder=["official_baseline"]
 train_side_camera=True
 batch_size = 128
 
@@ -46,16 +44,22 @@ def load_multi_dataset(data_dirs: list):
 
     return all_df
 
-def filter_dataset(df,portion=20):
+def filter_dataset(df,portion=20,verbose=False):
 
-    print("samples refiltered")
-    idx=np.abs(df.iloc[:,3].values)==0.0
-    non_zero_idx=np.abs(df.iloc[:,3].values)!=0.0
+    if verbose:
+        print("samples refiltered")
 
-    zero_len=len(idx)
+    steering_values=df.iloc[:,3].values
 
-    sel_idx=np.random.choice(idx,int(zero_len/portion))
+    idx=np.abs(steering_values)==0.0
+    non_zero_idx=np.abs(steering_values)!=0.0
 
+    zero_len=np.sum(idx)
+
+    sel_idx=np.random.choice(np.arange(0,df.shape[0])[idx],int(zero_len/portion))
+
+    assert np.all(df.iloc[sel_idx,3]==0.0)
+    assert np.all(df.iloc[non_zero_idx,3]!=0.0)
     ndf=pd.concat([df.iloc[sel_idx,:],df.iloc[non_zero_idx,:]],axis=0)
 
     return ndf
@@ -200,7 +204,7 @@ def main(_):
     nvidia_model.add(Dense(1))
 
     nvidia_model.compile(optimizer='adam', loss='mse')
-    nvidia_model.load_weights('nvidia_model_weights_v18.h5')
+    #nvidia_model.load_weights('nvidia_model_weights_v18.h5')
 
     checkpoint = ModelCheckpoint(filepath='./_model_checkpoints/model-{epoch:02d}.h5')
     callback_list = [checkpoint]
@@ -217,8 +221,8 @@ def main(_):
     #with open('model_hist.p','wb') as fp:
     #    pickle.dump(hist['loss'],fp)
 
-    nvidia_model.save("model_v19.h5")
-    nvidia_model.save_weights('nvidia_model_weights_v19.h5')
+    nvidia_model.save("model_r_v1.h5")
+    nvidia_model.save_weights('nvidia_model_weights_r_v1.h5')
 
 
 # parses flags and calls the `main` function above
