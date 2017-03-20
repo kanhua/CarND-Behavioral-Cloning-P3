@@ -23,13 +23,12 @@ parent_data_folder = './data/'
 img_sub_foler = 'IMG/'
 ch, row, col = 3, 160, 320
 ch, p_row, p_col = 3, 80, 160
-train_dataset_folder = ["track1_new_1/","track1_rec_1/"]
+train_dataset_folder = ["track1_new_1/","track1_rec_1/",
+                        "track2_7","track2_8","track2_9",
+                        "track2_rec_5","track2_rec_6","track2_rec_8"]
 val_dataset_folder=["official_baseline"]
 train_side_camera=True
 batch_size = 128
-
-img_placeholder = tf.placeholder("uint8", (None, 160, 320, 3))
-resize_op = tf.image.resize_images(img_placeholder, (p_row, p_col), method=0)
 
 
 def load_multi_dataset(data_dirs: list):
@@ -44,7 +43,7 @@ def load_multi_dataset(data_dirs: list):
 
     return all_df
 
-def filter_dataset(df,portion=20,verbose=False):
+def filter_dataset(df,portion=100,verbose=False):
 
     if verbose:
         print("samples refiltered")
@@ -64,7 +63,7 @@ def filter_dataset(df,portion=20,verbose=False):
 
     return ndf
 
-def filter_dataset_2nd_pass(df,portion=10,verbose=False):
+def filter_dataset_2nd_pass(df,portion=2,verbose=False):
 
     if verbose:
         print("samples refiltered")
@@ -227,14 +226,14 @@ def main(_):
     nvidia_model.add(Dense(1))
 
     nvidia_model.compile(optimizer='adam', loss='mse')
-    nvidia_model.load_weights('nvidia_model_weights_r_v3.h5')
+    #nvidia_model.load_weights('nvidia_model_weights_r_v3.h5')
 
     checkpoint = ModelCheckpoint(filepath='./_model_checkpoints/model-{epoch:02d}.h5')
     callback_list = [checkpoint]
 
     hist = nvidia_model.fit_generator(train_generator,
                                       var_sample_num*2,
-                                      nb_epoch=20,
+                                      nb_epoch=15,
                                       validation_data=validation_generator,
                                       nb_val_samples=validation_samples.shape[0]*2,
                                       callbacks=callback_list)
@@ -244,8 +243,8 @@ def main(_):
     #with open('model_hist.p','wb') as fp:
     #    pickle.dump(hist['loss'],fp)
 
-    nvidia_model.save("model_r_v3_1.h5")
-    nvidia_model.save_weights('nvidia_model_weights_r_v3_1.h5')
+    nvidia_model.save("model_r_v4.h5")
+    nvidia_model.save_weights('nvidia_model_weights_r_v4.h5')
 
 
 # parses flags and calls the `main` function above
