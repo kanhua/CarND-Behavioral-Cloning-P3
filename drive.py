@@ -23,6 +23,14 @@ model = None
 prev_image_array = None
 
 
+def clahe_image(image):
+    yuv_img = cv2.cvtColor(image,cv2.COLOR_RGB2HSV)
+    clahe = cv2.createCLAHE(clipLimit=5.0, tileGridSize=(4,4))
+    yuv_img[:,:,2]= clahe.apply(yuv_img[:,:,2])
+    n_img = cv2.cvtColor(yuv_img,cv2.COLOR_HSV2RGB)
+    return n_img
+
+
 class SimplePIController:
     def __init__(self, Kp, Ki):
         self.Kp = Kp
@@ -65,6 +73,7 @@ def telemetry(sid, data):
 
 
         image_array=cv2.resize(image_array,dsize=(0,0),fx=0.5,fy=0.5)
+        image_array=clahe_image(image_array)
         steering_angle = float(model.predict(image_array[None, :, :, :], batch_size=1))
 
         throttle = controller.update(float(speed))
