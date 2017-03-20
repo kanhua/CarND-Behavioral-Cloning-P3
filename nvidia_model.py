@@ -23,9 +23,10 @@ parent_data_folder = './data/'
 img_sub_foler = 'IMG/'
 ch, row, col = 3, 160, 320
 ch, p_row, p_col = 3, 80, 160
-train_dataset_folder = ["track1_new_1/","track1_rec_1/",
-                        "track2_7","track2_8","track2_9",
-                        "track2_rec_5","track2_rec_6","track2_rec_8"]
+#train_dataset_folder = ["track1_new_1/","track1_rec_1/","track1_rec_2",
+#                        "track2_7","track2_8","track2_9",
+#                        "track2_rec_5","track2_rec_6","track2_rec_8","track2_rec_7"]
+train_dataset_folder=["track1_rec_3/","track1_new_1/"]
 val_dataset_folder=["official_baseline"]
 train_side_camera=True
 batch_size = 128
@@ -210,7 +211,7 @@ def main(_):
     nvidia_model.add(Lambda(lambda x: x / 255.0 - 0.5, input_shape=(p_row, p_col, ch)))
 
     #nvidia_model.add(Cropping2D(cropping=((70, 24), (0, 0))))
-    #nvidia_model.add(Cropping2D(cropping=((35, 12), (0, 0))))
+    nvidia_model.add(Cropping2D(cropping=((0, 8), (0, 0))))
 
     #nvidia_model.add(Lambda(lambda image: K.resize_images(image, (160-94)/2,160,'tf')))
     nvidia_model.add(Convolution2D(24, 5, 5, subsample=(2, 2), activation='relu'))
@@ -226,7 +227,7 @@ def main(_):
     nvidia_model.add(Dense(1))
 
     nvidia_model.compile(optimizer='adam', loss='mse')
-    #nvidia_model.load_weights('nvidia_model_weights_r_v3.h5')
+    nvidia_model.load_weights('nvidia_model_weights_r_v4.h5')
 
     checkpoint = ModelCheckpoint(filepath='./_model_checkpoints/model-{epoch:02d}.h5')
     callback_list = [checkpoint]
@@ -243,8 +244,8 @@ def main(_):
     #with open('model_hist.p','wb') as fp:
     #    pickle.dump(hist['loss'],fp)
 
-    nvidia_model.save("model_r_v4.h5")
-    nvidia_model.save_weights('nvidia_model_weights_r_v4.h5')
+    nvidia_model.save("model_r_v4_1.h5")
+    nvidia_model.save_weights('nvidia_model_weights_r_v4_1.h5')
 
 
 # parses flags and calls the `main` function above
