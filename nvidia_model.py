@@ -64,6 +64,27 @@ def filter_dataset(df,portion=20,verbose=False):
 
     return ndf
 
+def filter_dataset_2nd_pass(df,portion=10,verbose=False):
+
+    if verbose:
+        print("samples refiltered")
+
+    steering_values=df.iloc[:,3].values
+
+    idx=np.abs(steering_values)<0.2
+    non_zero_idx=np.abs(steering_values)>0.2
+
+    zero_len=np.sum(idx)
+
+    sel_idx=np.random.choice(np.arange(0,df.shape[0])[idx],int(zero_len/portion))
+
+    assert np.all(np.abs(df.iloc[sel_idx,3])<0.2)
+    assert np.all(np.abs(df.iloc[non_zero_idx,3])>0.2)
+    ndf=pd.concat([df.iloc[sel_idx,:],df.iloc[non_zero_idx,:]],axis=0)
+
+    return ndf
+
+
 def augment_brightness_camera_images(image):
     """
     Augmentation of brightness.
@@ -101,6 +122,7 @@ def generator(input_samples, batch_size=32, shuffle_samples=True,side_cam=False,
     while True:  # Loop forever so the generator never terminates
         if filter==True:
             samples = filter_dataset(input_samples)
+            samples = filter_dataset_2nd_pass(samples)
         else:
             samples = input_samples
 
@@ -174,6 +196,7 @@ def main(_):
 
     #train_samples=filter_dataset(train_samples)
     dummy_train_samples=filter_dataset(train_samples)
+    dummy_train_samples=filter_dataset_2nd_pass(dummy_train_samples)
     var_sample_num=dummy_train_samples.shape[0]
 
     train_generator = generator(train_samples,
@@ -204,7 +227,7 @@ def main(_):
     nvidia_model.add(Dense(1))
 
     nvidia_model.compile(optimizer='adam', loss='mse')
-    #nvidia_model.load_weights('nvidia_model_weights_v18.h5')
+    nvidia_model.load_weights('nvidia_model_weights_r_v3.h5')
 
     checkpoint = ModelCheckpoint(filepath='./_model_checkpoints/model-{epoch:02d}.h5')
     callback_list = [checkpoint]
@@ -221,8 +244,8 @@ def main(_):
     #with open('model_hist.p','wb') as fp:
     #    pickle.dump(hist['loss'],fp)
 
-    nvidia_model.save("model_r_v1.h5")
-    nvidia_model.save_weights('nvidia_model_weights_r_v1.h5')
+    nvidia_model.save("model_r_v3_1.h5")
+    nvidia_model.save_weights('nvidia_model_weights_r_v3_1.h5')
 
 
 # parses flags and calls the `main` function above
