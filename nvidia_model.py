@@ -27,18 +27,18 @@ train_dataset_folder = [#("track1_new_1/",1),
                         # ("track1_rec_1/",1),
                         # ("track1_rec_2",1),
                         # ("track1_rec_3",1),
-                         ("track2_7",1),
-                         ("track2_8",1),
-                         ("track2_9",1),
-                         ("track2_10",1),
-                         ("track2_rec_5",1),
-                         ("track2_rec_6",1),
-                         ("track2_rec_8",1),
-                         ("track2_rec_7",1),
-                        ("track2_curve_1",1)]
+                         ("track2_7",1,False),
+                         ("track2_8",1,False),
+                         ("track2_9",1,False),
+                         ("track2_10",1,False),
+                         ("track2_rec_5",1,True),
+                         ("track2_rec_6",1,True),
+                         ("track2_rec_8",1,True),
+                         ("track2_rec_7",1,True),
+                        ("track2_curve_1",5,False)]
 
 #train_dataset_folder=["track1_rec_3/","track1_new_1/"]
-val_dataset_folder=[("track2_2",1),("track2_3",1)]
+val_dataset_folder=[("track2_2",1,True),("track2_3",1,True)]
 train_side_camera=True
 batch_size = 128
 
@@ -49,6 +49,8 @@ def load_multi_dataset(data_dirs_pair:list):
     all_df = []
     for i,ddir in enumerate(data_dirs):
         df = update_df(ddir)
+        if data_dirs_pair[i][2]:
+            df=df.loc[np.abs(df["steering"])<0.01,:]
         for k in range(data_dirs_pair[i][1]):
             all_df.append(df)
 
@@ -76,7 +78,7 @@ def filter_dataset(df,portion=100,verbose=False):
 
     return ndf
 
-def filter_dataset_2nd_pass(df,portion=2,verbose=False):
+def filter_dataset_2nd_pass(df,portion=1,verbose=False):
 
     if verbose:
         print("samples refiltered")
