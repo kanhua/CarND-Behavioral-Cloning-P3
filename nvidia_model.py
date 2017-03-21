@@ -24,19 +24,21 @@ img_sub_foler = 'IMG/'
 ch, row, col = 3, 160, 320
 ch, p_row, p_col = 3, 80, 160
 train_dataset_folder = [("track1_new_1/",1),
-                        ("track1_rec_1/",2),
-                        ("track1_rec_2",2),
-                        ("track1_rec_3",2),
-                        ("track2_7",1),
-                        ("track2_8",1),
-                        ("track2_9",1),
-                        ("track2_rec_5",2),
-                        ("track2_rec_6",2),
-                        ("track2_rec_8",2),
-                        ("track2_rec_7",2)]
+                         ("track1_rec_1/",1),
+                         ("track1_rec_2",1),
+                         ("track1_rec_3",1),
+                         ("track2_7",1),
+                         ("track2_8",1),
+                         ("track2_9",1),
+                         ("track2_10",1),
+                         ("track2_rec_5",1),
+                         ("track2_rec_6",1),
+                         ("track2_rec_8",1),
+                         ("track2_rec_7",1)]
+
 #train_dataset_folder=["track1_rec_3/","track1_new_1/"]
 val_dataset_folder=[("official_baseline",1)]
-train_side_camera=True
+train_side_camera=False
 batch_size = 128
 
 
@@ -236,7 +238,7 @@ def main(_):
     nvidia_model.add(Dense(1))
 
     nvidia_model.compile(optimizer='adam', loss='mse')
-    #nvidia_model.load_weights('nvidia_model_weights_r_v4.h5')
+    #nvidia_model.load_weights('nvidia_model_weights_r_v5.h5')
 
     checkpoint = ModelCheckpoint(filepath='./_model_checkpoints/model-{epoch:02d}.h5')
     callback_list = [checkpoint]
@@ -253,8 +255,8 @@ def main(_):
     #with open('model_hist.p','wb') as fp:
     #    pickle.dump(hist['loss'],fp)
 
-    nvidia_model.save("model_r_v5.h5")
-    nvidia_model.save_weights('nvidia_model_weights_r_v5.h5')
+    nvidia_model.save("model_r_v6.h5")
+    nvidia_model.save_weights('nvidia_model_weights_r_v6.h5')
 
 
 # parses flags and calls the `main` function above

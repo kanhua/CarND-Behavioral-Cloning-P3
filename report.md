@@ -7,9 +7,12 @@
 ### Augmentation and Selection of the data
 
 #### Three cameras
-I use all the three cameras to train the data. During the training, the model randomly select a camera image among the three. I added +/- 0.14 of steering values to the cameras. 
+I use all the three cameras to train the data. During the training, the model randomly select a camera image among the three. I added +/- 0.14 of steering values to the cameras. This is determined by fitting a model just using the center camera, and then
 
 #### Flip the images horizontally
+I filpped each image horizontally 
+
+
 
 #### Resampling the data
 
