@@ -38,7 +38,7 @@ train_dataset_folder = [("track1_new_1/",1),
 
 #train_dataset_folder=["track1_rec_3/","track1_new_1/"]
 val_dataset_folder=[("official_baseline",1)]
-train_side_camera=False
+train_side_camera=True
 batch_size = 128
 
 
@@ -123,9 +123,9 @@ def load_sample_df(df: pd.DataFrame, test_size=0.2):
     return train, val
 
 
-center_cam={'cam_index':0,'steering_adjust':0}
-right_cam={'cam_index':2,'steering_adjust':-0.16}
-left_cam={'cam_index':1,'steering_adjust':0.16}
+center_cam={'cam_index':0,'steering_adjust':0,'slope':1}
+right_cam={'cam_index':2,'steering_adjust':-0.09,"slope":0.7}
+left_cam={'cam_index':1,'steering_adjust':0.09,"slope":0.7}
 
 
 def generator(input_samples, batch_size=32, shuffle_samples=True,side_cam=False,filter=False):
@@ -160,7 +160,7 @@ def generator(input_samples, batch_size=32, shuffle_samples=True,side_cam=False,
 
             # trim image to only see section with road
             X_train = np.array(images)
-            y_train = samples.iloc[offset:min(offset + batch_size, num_samples), 3]+cam['steering_adjust']
+            y_train = samples.iloc[offset:min(offset + batch_size, num_samples), 3]*cam["slope"]+cam['steering_adjust']
 
             #filter out index that steering>0
             #idx=np.abs(y_train.values)>0.01
