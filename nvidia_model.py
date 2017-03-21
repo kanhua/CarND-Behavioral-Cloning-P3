@@ -23,10 +23,10 @@ parent_data_folder = './data/'
 img_sub_foler = 'IMG/'
 ch, row, col = 3, 160, 320
 ch, p_row, p_col = 3, 80, 160
-train_dataset_folder = [("track1_new_1/",1),
-                         ("track1_rec_1/",1),
-                         ("track1_rec_2",1),
-                         ("track1_rec_3",1),
+train_dataset_folder = [#("track1_new_1/",1),
+                        # ("track1_rec_1/",1),
+                        # ("track1_rec_2",1),
+                        # ("track1_rec_3",1),
                          ("track2_7",1),
                          ("track2_8",1),
                          ("track2_9",1),
@@ -34,10 +34,11 @@ train_dataset_folder = [("track1_new_1/",1),
                          ("track2_rec_5",1),
                          ("track2_rec_6",1),
                          ("track2_rec_8",1),
-                         ("track2_rec_7",1)]
+                         ("track2_rec_7",1),
+                        ("track2_curve_1",1)]
 
 #train_dataset_folder=["track1_rec_3/","track1_new_1/"]
-val_dataset_folder=[("official_baseline",1)]
+val_dataset_folder=[("track2_2",1),("track2_3",1)]
 train_side_camera=True
 batch_size = 128
 
@@ -124,8 +125,8 @@ def load_sample_df(df: pd.DataFrame, test_size=0.2):
 
 
 center_cam={'cam_index':0,'steering_adjust':0,'slope':1}
-right_cam={'cam_index':2,'steering_adjust':-0.09,"slope":0.7}
-left_cam={'cam_index':1,'steering_adjust':0.09,"slope":0.7}
+right_cam={'cam_index':2,'steering_adjust':-0.1,"slope":1}
+left_cam={'cam_index':1,'steering_adjust':0.1,"slope":1}
 
 
 def generator(input_samples, batch_size=32, shuffle_samples=True,side_cam=False,filter=False):
@@ -158,12 +159,9 @@ def generator(input_samples, batch_size=32, shuffle_samples=True,side_cam=False,
 
                 images.append(center_image)
 
-            # trim image to only see section with road
             X_train = np.array(images)
             y_train = samples.iloc[offset:min(offset + batch_size, num_samples), 3]*cam["slope"]+cam['steering_adjust']
 
-            #filter out index that steering>0
-            #idx=np.abs(y_train.values)>0.01
 
             nX_train=np.flip(X_train,axis=3)
 
@@ -238,25 +236,25 @@ def main(_):
     nvidia_model.add(Dense(1))
 
     nvidia_model.compile(optimizer='adam', loss='mse')
-    #nvidia_model.load_weights('nvidia_model_weights_r_v5.h5')
+    #nvidia_model.load_weights('nvidia_model_weights_r_v7.h5')
 
     checkpoint = ModelCheckpoint(filepath='./_model_checkpoints/model-{epoch:02d}.h5')
     callback_list = [checkpoint]
 
     hist = nvidia_model.fit_generator(train_generator,
                                       var_sample_num*2,
-                                      nb_epoch=15,
+                                      nb_epoch=10,
                                       validation_data=validation_generator,
                                       nb_val_samples=validation_samples.shape[0]*2,
                                       callbacks=callback_list)
 
     # nvidia_model.evaluate_generator(validation_generator,validation_samples.shape[0])
 
-    #with open('model_hist.p','wb') as fp:
-    #    pickle.dump(hist['loss'],fp)
+    with open('model_hist.p','wb') as fp:
+        pickle.dump(hist.history,fp)
 
-    nvidia_model.save("model_r_v6.h5")
-    nvidia_model.save_weights('nvidia_model_weights_r_v6.h5')
+    nvidia_model.save("model_r_v7.h5")
+    nvidia_model.save_weights('nvidia_model_weights_r_v7.h5')
 
 
 # parses flags and calls the `main` function above
