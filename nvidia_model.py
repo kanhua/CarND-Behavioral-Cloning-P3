@@ -31,6 +31,7 @@ train_dataset_folder = [#("track1_new_1/",1),
                          ("track2_8",1,False),
                          ("track2_9",1,False),
                          ("track2_10",1,False),
+                         ("track2_11",1,False),
                          ("track2_rec_5",1,True),
                          ("track2_rec_6",1,True),
                          ("track2_rec_8",1,True),
@@ -38,9 +39,9 @@ train_dataset_folder = [#("track1_new_1/",1),
                         ("track2_curve_1",5,False)]
 
 #train_dataset_folder=["track1_rec_3/","track1_new_1/"]
-val_dataset_folder=[("track2_2",1,True),("track2_3",1,True)]
+val_dataset_folder=[("track2_2",1,False),("track2_3",1,False)]
 train_side_camera=True
-batch_size = 128
+batch_size = 512
 
 
 def load_multi_dataset(data_dirs_pair:list):
@@ -80,6 +81,9 @@ def filter_dataset(df,portion=100,verbose=False):
 
 def filter_dataset_2nd_pass(df,portion=1,verbose=False):
 
+    if portion==1:
+        return df
+
     if verbose:
         print("samples refiltered")
 
@@ -98,6 +102,22 @@ def filter_dataset_2nd_pass(df,portion=1,verbose=False):
 
     return ndf
 
+
+
+def resample_df(df,bins=100):
+    steering_val=df["steering"].values
+    counts,bin_bound=np.histogram(steering_val,bins=bins)
+    rand_size=np.floor(np.median(counts)).astype('int')
+    final_idx=[]
+    for i in range(bin_bound.shape[0]-1):
+        idx=np.logical_and(steering_val>=bin_bound[i],steering_val<bin_bound[i+1])
+        num_idx=np.flatnonzero(idx)
+        sel_idx=np.random.choice(num_idx,rand_size)
+        assert np.all(steering_val[sel_idx]>=bin_bound[i])
+        assert np.all(steering_val[sel_idx]<bin_bound[i+1])
+        final_idx.extend(sel_idx)
+    final_idx=np.array(final_idx)
+    return df.iloc[final_idx,:]
 
 def augment_brightness_camera_images(image):
     """
@@ -127,16 +147,20 @@ def load_sample_df(df: pd.DataFrame, test_size=0.2):
 
 
 center_cam={'cam_index':0,'steering_adjust':0,'slope':1}
-right_cam={'cam_index':2,'steering_adjust':-0.1,"slope":1}
-left_cam={'cam_index':1,'steering_adjust':0.1,"slope":1}
+right_cam={'cam_index':2,'steering_adjust':-0.07,"slope":1.15}
+left_cam={'cam_index':1,'steering_adjust':0.07,"slope":1.15}
 
 
-def generator(input_samples, batch_size=32, shuffle_samples=True,side_cam=False,filter=False):
+def generator(input_samples, batch_size=32,
+              shuffle_samples=True,side_cam=False,
+              filter=False,sample_num_bound=None):
 
     while True:  # Loop forever so the generator never terminates
         if filter==True:
             samples = filter_dataset(input_samples)
-            samples = filter_dataset_2nd_pass(samples)
+            samples = resample_df(samples)
+            sel_idx=np.random.choice(samples.shape[0],sample_num_bound)
+            samples=samples.iloc[sel_idx,:]
         else:
             samples = input_samples
 
@@ -207,11 +231,12 @@ def main(_):
 
     #train_samples=filter_dataset(train_samples)
     dummy_train_samples=filter_dataset(train_samples)
-    dummy_train_samples=filter_dataset_2nd_pass(dummy_train_samples)
+    dummy_train_samples=resample_df(dummy_train_samples)
     var_sample_num=dummy_train_samples.shape[0]
 
     train_generator = generator(train_samples,
-                                batch_size=batch_size,side_cam=train_side_camera,filter=True)
+                                batch_size=batch_size,
+                                side_cam=train_side_camera,filter=True,sample_num_bound=var_sample_num)
     validation_generator = generator(validation_samples,
                                      batch_size=batch_size,side_cam=False,filter=False)
 
@@ -255,8 +280,8 @@ def main(_):
     with open('model_hist.p','wb') as fp:
         pickle.dump(hist.history,fp)
 
-    nvidia_model.save("model_r_v7.h5")
-    nvidia_model.save_weights('nvidia_model_weights_r_v7.h5')
+    nvidia_model.save("model_r_v8.h5")
+    nvidia_model.save_weights('nvidia_model_weights_r_v8.h5')
 
 
 # parses flags and calls the `main` function above
