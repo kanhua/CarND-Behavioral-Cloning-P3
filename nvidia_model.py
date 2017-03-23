@@ -5,6 +5,7 @@ from keras.models import Sequential, Model
 from keras.layers import Dense, Dropout, \
     Flatten, Input, Lambda, Cropping2D, Convolution2D
 from keras.callbacks import ModelCheckpoint
+from keras.optimizers import Adam
 import pandas as pd
 import os
 from sklearn.model_selection import train_test_split
@@ -22,9 +23,9 @@ parent_data_folder = './data/'
 img_sub_foler = 'IMG/'
 ch, row, col = 3, 160, 320
 ch, p_row, p_col = 3, 80, 160
-train_dataset_folder = [#("track1_new_1/",1),
-                        # ("track1_rec_1/",1),
-                        # ("track1_rec_2",1),
+train_dataset_folder = [("track1_new_1/",1,False),
+                        ("track1_rec_1/",1,False),
+                        ("track1_rec_2",1,False),
                         # ("track1_rec_3",1),
                         # ("track2_7",1,False),
                         # ("track2_8",1,False),
@@ -32,10 +33,11 @@ train_dataset_folder = [#("track1_new_1/",1),
                         # ("track2_10",1,False),
                          ("track2_11",1,False),
                          ("track2_13",1,False),
+                         ("track2_rev_1",1,False),
                         # ("track2_rec_5",1,True),
                         # ("track2_rec_6",1,True),
-                        # ("track2_rec_8",1,True),
-                        # ("track2_rec_7",1,True),
+                         ("track2_rec_8",1,True),
+                         ("track2_rec_7",1,True),
                          ("track2_rec_9",1,True),
                         ("track2_rec_10",10,True)]
                         #("track2_curve_1",1,False)]
@@ -264,8 +266,9 @@ def main(_):
     nvidia_model.add(Dense(10))
     nvidia_model.add(Dense(1))
 
+    adam=Adam(lr=0.0001)
     nvidia_model.compile(optimizer='adam', loss='mse')
-    #nvidia_model.load_weights('nvidia_model_weights_r_v9.h5')
+    #nvidia_model.load_weights('nvidia_model_weights_r_v10.h5')
 
     checkpoint = ModelCheckpoint(filepath='./_model_checkpoints/model-{epoch:02d}.h5')
     callback_list = [checkpoint]
@@ -279,11 +282,11 @@ def main(_):
 
     # nvidia_model.evaluate_generator(validation_generator,validation_samples.shape[0])
 
-    with open('model_hist_r_v9_1.p','wb') as fp:
+    with open('model_hist_r_v10_1.p','wb') as fp:
         pickle.dump(hist.history,fp)
 
-    nvidia_model.save("model_r_v9_1.h5")
-    nvidia_model.save_weights('nvidia_model_weights_r_v9_1.h5')
+    nvidia_model.save("model_r_v10_1.h5")
+    nvidia_model.save_weights('nvidia_model_weights_r_v10_1.h5')
 
 
 # parses flags and calls the `main` function above

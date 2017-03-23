@@ -32,7 +32,6 @@ Recovery data is very useful in rescuing the unexpected driving behavior.
 
 
 
-
 ## Models
 
 I use the NVidia model to train the data.
