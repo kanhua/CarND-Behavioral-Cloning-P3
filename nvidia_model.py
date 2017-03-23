@@ -13,7 +13,6 @@ import cv2
 import typing
 from fix_path import update_df
 import random
-import keras.backend as K
 
 flags = tf.app.flags
 FLAGS = flags.FLAGS
@@ -27,19 +26,22 @@ train_dataset_folder = [#("track1_new_1/",1),
                         # ("track1_rec_1/",1),
                         # ("track1_rec_2",1),
                         # ("track1_rec_3",1),
-                         ("track2_7",1,False),
-                         ("track2_8",1,False),
-                         ("track2_9",1,False),
-                         ("track2_10",1,False),
+                        # ("track2_7",1,False),
+                        # ("track2_8",1,False),
+                        # ("track2_9",1,False),
+                        # ("track2_10",1,False),
                          ("track2_11",1,False),
-                         ("track2_rec_5",1,True),
-                         ("track2_rec_6",1,True),
-                         ("track2_rec_8",1,True),
-                         ("track2_rec_7",1,True),
-                        ("track2_curve_1",5,False)]
+                         ("track2_13",1,False),
+                        # ("track2_rec_5",1,True),
+                        # ("track2_rec_6",1,True),
+                        # ("track2_rec_8",1,True),
+                        # ("track2_rec_7",1,True),
+                         ("track2_rec_9",1,True),
+                        ("track2_rec_10",10,True)]
+                        #("track2_curve_1",1,False)]
 
 #train_dataset_folder=["track1_rec_3/","track1_new_1/"]
-val_dataset_folder=[("track2_2",1,False),("track2_3",1,False)]
+val_dataset_folder=[("track2_val_1",1,False)]
 train_side_camera=True
 batch_size = 512
 
@@ -147,8 +149,8 @@ def load_sample_df(df: pd.DataFrame, test_size=0.2):
 
 
 center_cam={'cam_index':0,'steering_adjust':0,'slope':1}
-right_cam={'cam_index':2,'steering_adjust':-0.07,"slope":1.15}
-left_cam={'cam_index':1,'steering_adjust':0.07,"slope":1.15}
+right_cam={'cam_index':2,'steering_adjust':-0.07,"slope":0.8}
+left_cam={'cam_index':1,'steering_adjust':0.07,"slope":0.8}
 
 
 def generator(input_samples, batch_size=32,
@@ -263,7 +265,7 @@ def main(_):
     nvidia_model.add(Dense(1))
 
     nvidia_model.compile(optimizer='adam', loss='mse')
-    #nvidia_model.load_weights('nvidia_model_weights_r_v7.h5')
+    #nvidia_model.load_weights('nvidia_model_weights_r_v9.h5')
 
     checkpoint = ModelCheckpoint(filepath='./_model_checkpoints/model-{epoch:02d}.h5')
     callback_list = [checkpoint]
@@ -277,11 +279,11 @@ def main(_):
 
     # nvidia_model.evaluate_generator(validation_generator,validation_samples.shape[0])
 
-    with open('model_hist.p','wb') as fp:
+    with open('model_hist_r_v9_1.p','wb') as fp:
         pickle.dump(hist.history,fp)
 
-    nvidia_model.save("model_r_v8.h5")
-    nvidia_model.save_weights('nvidia_model_weights_r_v8.h5')
+    nvidia_model.save("model_r_v9_1.h5")
+    nvidia_model.save_weights('nvidia_model_weights_r_v9_1.h5')
 
 
 # parses flags and calls the `main` function above
