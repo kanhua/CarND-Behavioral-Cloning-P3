@@ -14,6 +14,7 @@ import cv2
 import typing
 from fix_path import update_df
 import random
+from image_preprocess import preprossing,IMAGE_HEIGHT,IMAGE_WIDTH
 
 flags = tf.app.flags
 FLAGS = flags.FLAGS
@@ -22,7 +23,6 @@ FLAGS = flags.FLAGS
 parent_data_folder = './data/'
 img_sub_foler = 'IMG/'
 ch, row, col = 3, 160, 320
-ch, p_row, p_col = 3, 80, 160
 train_dataset_folder = [("track1_new_1/",1,False),
                         ("track1_rec_1/",1,False),
                         ("track1_rec_2",1,False),
@@ -83,30 +83,6 @@ def filter_dataset(df,portion=100,verbose=False):
 
     return ndf
 
-def filter_dataset_2nd_pass(df,portion=1,verbose=False):
-
-    if portion==1:
-        return df
-
-    if verbose:
-        print("samples refiltered")
-
-    steering_values=df.iloc[:,3].values
-
-    idx=np.abs(steering_values)<0.2
-    non_zero_idx=np.abs(steering_values)>0.2
-
-    zero_len=np.sum(idx)
-
-    sel_idx=np.random.choice(np.arange(0,df.shape[0])[idx],int(zero_len/portion))
-
-    assert np.all(np.abs(df.iloc[sel_idx,3])<0.2)
-    assert np.all(np.abs(df.iloc[non_zero_idx,3])>0.2)
-    ndf=pd.concat([df.iloc[sel_idx,:],df.iloc[non_zero_idx,:]],axis=0)
-
-    return ndf
-
-
 
 def resample_df(df,bins=100):
     steering_val=df["steering"].values
@@ -143,6 +119,18 @@ def augment_brightness_camera_images(image):
     return image1
 
 
+def trans_image(image, trans_range):
+    # Translation
+    tr_x = trans_range * np.random.uniform() - trans_range / 2
+    steer_ang = tr_x / trans_range * 2 * .2
+    tr_y = 40 * np.random.uniform() - 40 / 2
+    # tr_y = 0
+    Trans_M = np.float32([[1, 0, tr_x], [0, 1, tr_y]])
+    image_tr = cv2.warpAffine(image, Trans_M, (col, row))
+
+    return image_tr, steer_ang
+
+
 
 def load_sample_df(df: pd.DataFrame, test_size=0.2):
     train, val = train_test_split(df, test_size=test_size)
@@ -151,8 +139,8 @@ def load_sample_df(df: pd.DataFrame, test_size=0.2):
 
 
 center_cam={'cam_index':0,'steering_adjust':0,'slope':1}
-right_cam={'cam_index':2,'steering_adjust':-0.07,"slope":0.8}
-left_cam={'cam_index':1,'steering_adjust':0.07,"slope":0.8}
+right_cam={'cam_index':2,'steering_adjust':-0.14,"slope":1}
+left_cam={'cam_index':1,'steering_adjust':0.14,"slope":1}
 
 
 def generator(input_samples, batch_size=32,
@@ -180,17 +168,20 @@ def generator(input_samples, batch_size=32,
             batch_samples = samples.iloc[offset:min(offset + batch_size, num_samples), cam['cam_index']]
 
             images = []
+            steer_adj=[]
             for batch_sample in batch_samples:
                 center_image = cv2.imread(batch_sample)
-
-                center_image=cv2.resize(center_image,dsize=(0,0),fx=0.5,fy=0.5)
                 #augment new images
                 center_image=augment_brightness_camera_images(center_image)
+                center_image,adj=trans_image(center_image,100)
+                center_image=preprossing(center_image)
 
                 images.append(center_image)
+                steer_adj.append(adj)
 
             X_train = np.array(images)
-            y_train = samples.iloc[offset:min(offset + batch_size, num_samples), 3]*cam["slope"]+cam['steering_adjust']
+            y_train = samples.iloc[offset:min(offset + batch_size, num_samples), 3]\
+                      *cam["slope"]+cam['steering_adjust']+np.array(steer_adj)
 
 
             nX_train=np.flip(X_train,axis=3)
@@ -247,11 +238,9 @@ def main(_):
 
     nvidia_model = Sequential()
 
-
-    nvidia_model.add(Lambda(lambda x: x / 255.0 - 0.5, input_shape=(p_row, p_col, ch)))
+    nvidia_model.add(Lambda(lambda x: x / 255.0 - 0.5, input_shape=(IMAGE_HEIGHT, IMAGE_WIDTH, 3)))
 
     #nvidia_model.add(Cropping2D(cropping=((70, 24), (0, 0))))
-    nvidia_model.add(Cropping2D(cropping=((0, 8), (0, 0))))
 
     #nvidia_model.add(Lambda(lambda image: K.resize_images(image, (160-94)/2,160,'tf')))
     nvidia_model.add(Convolution2D(24, 5, 5, subsample=(2, 2), activation='relu'))
@@ -266,7 +255,7 @@ def main(_):
     nvidia_model.add(Dense(10))
     nvidia_model.add(Dense(1))
 
-    adam=Adam(lr=0.0001)
+    #adam=Adam(lr=0.0001)
     nvidia_model.compile(optimizer='adam', loss='mse')
     #nvidia_model.load_weights('nvidia_model_weights_r_v10.h5')
 
@@ -285,8 +274,8 @@ def main(_):
     with open('model_hist_r_v10_1.p','wb') as fp:
         pickle.dump(hist.history,fp)
 
-    nvidia_model.save("model_r_v10_1.h5")
-    nvidia_model.save_weights('nvidia_model_weights_r_v10_1.h5')
+    nvidia_model.save("model_r_v11.h5")
+    nvidia_model.save_weights('nvidia_model_weights_r_v11.h5')
 
 
 # parses flags and calls the `main` function above
