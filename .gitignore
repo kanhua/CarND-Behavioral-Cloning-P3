@@ -13,7 +13,12 @@ IMG/
 run1/
 run2/
 *.mp4
-
+data/
+_model_checkpoints/
+archive_data/
+model_archive/
+model_w_archive/
+mac_sim
 
 # IntelliJ project files
 .idea

@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Assets</key>
+	<dict>
+		<key>38852806-6A30-499C-8A73-7413C5C637B8</key>
+		<dict>
+			<key>HREF</key>
+			<string>00003-Behavioural%20cloning%20start.jpg</string>
+			<key>Last Modified</key>
+			<date>2017-03-24T08:31:23Z</date>
+			<key>Size</key>
+			<integer>118294</integer>
+		</dict>
+		<key>D5D1FCE0-C197-4A68-A73B-388A32F8466D</key>
+		<dict>
+			<key>HREF</key>
+			<string>00002-Keras.jpg</string>
+			<key>Last Modified</key>
+			<date>2017-03-24T08:31:22Z</date>
+			<key>Size</key>
+			<integer>81503</integer>
+		</dict>
+		<key>E69F4356-6314-4C66-8EA6-3AA85B6BD64D</key>
+		<dict>
+			<key>HREF</key>
+			<string>00001-transfer-learning%20lab.jpg</string>
+			<key>Last Modified</key>
+			<date>2017-03-24T08:31:21Z</date>
+			<key>Size</key>
+			<integer>139489</integer>
+		</dict>
+	</dict>
+	<key>Settings</key>
+	<dict>
+		<key>Compression Factor</key>
+		<real>0.80000001192092896</real>
+		<key>Image Type</key>
+		<integer>0</integer>
+		<key>Max Width</key>
+		<integer>1024</integer>
+		<key>Scale Image to Max Width</key>
+		<false/>
+		<key>Use Idea Space Size</key>
+		<false/>
+	</dict>
+</dict>
+</plist>
