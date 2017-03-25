@@ -20,13 +20,17 @@ flags = tf.app.flags
 FLAGS = flags.FLAGS
 
 # Set parameters here
+steering_index=3
 parent_data_folder = './data/'
 img_sub_foler = 'IMG/'
 ch, row, col = 3, 160, 320
-train_dataset_folder = [("track1_new_1/", 1, False),
-                        ("track1_rec_1/", 1, False),
-                        ("track1_rec_2", 1, False),
-                        # ("track1_rec_3",1),
+
+# A list of tuples of (training_folder_name,weight_of_the_datset,exclude_zero_steering)
+
+train_dataset_folder = [("track1_new_1/", 2, False),
+                        ("track1_rec_1/", 2, True),
+                        ("track1_rec_2", 2, True),
+                        ("track1_rec_3", 2, True),
                         # ("track2_7",1,False),
                         # ("track2_8",1,False),
                         # ("track2_9",1,False),
@@ -39,7 +43,7 @@ train_dataset_folder = [("track1_new_1/", 1, False),
                         ("track2_rec_8", 1, True),
                         ("track2_rec_7", 1, True),
                         ("track2_rec_9", 1, True),
-                        ("track2_rec_10", 10, True)]
+                        ("track2_rec_10", 1, True)]
 # ("track2_curve_1",1,False)]
 
 # train_dataset_folder=["track1_rec_3/","track1_new_1/"]
@@ -47,8 +51,12 @@ val_dataset_folder = [("track2_val_1", 1, False)]
 train_side_camera = True
 batch_size = 512
 
+center_cam = {'cam_index': 0, 'steering_adjust': 0, 'slope': 1}
+right_cam = {'cam_index': 2, 'steering_adjust': -0.14, "slope": 1}
+left_cam = {'cam_index': 1, 'steering_adjust': 0.14, "slope": 1}
 
-def load_multi_dataset(data_dirs_pair: list):
+
+def load_multi_dataset(data_dirs_pair: list)->pd.DataFrame:
     data_dirs = list(map(lambda x: os.path.join(parent_data_folder, x[0]), data_dirs_pair))
 
     all_df = []
@@ -64,12 +72,21 @@ def load_multi_dataset(data_dirs_pair: list):
     return all_df
 
 
-def filter_dataset(df, keep_size=0.01, verbose=False):
+def filter_zero_steering(df:pd.DataFrame, keep_size=0.01, verbose=False)->pd.DataFrame:
+    """
+    Reduce the number of entries in the data that steering==0.0
+
+    :param df: The pandas dataframe loaded from driving_log.csv
+    :param keep_size: The ratio of df['steering']==0.0 entries to be kept
+    :param verbose: Set True to display the messages
+    :return:
+    """
     if verbose:
-        print("samples refiltered")
+        print("Filtering entries with steering value ==0.0")
 
-    steering_values = df.iloc[:, 3].values
+    steering_values = df.iloc[:, steering_index].values
 
+    # Separate the data frame into two groups: steering==0.0 and steering !=0.0
     idx = np.abs(steering_values) == 0.0
     non_zero_idx = np.abs(steering_values) != 0.0
 
@@ -77,18 +94,31 @@ def filter_dataset(df, keep_size=0.01, verbose=False):
 
     sel_idx = np.random.choice(np.arange(0, df.shape[0])[idx], int(zero_len * keep_size))
 
-    assert np.all(df.iloc[sel_idx, 3] == 0.0)
-    assert np.all(df.iloc[non_zero_idx, 3] != 0.0)
+    assert np.all(df.iloc[sel_idx, steering_index] == 0.0)
+    assert np.all(df.iloc[non_zero_idx, steering_index] != 0.0)
+
     ndf = pd.concat([df.iloc[sel_idx, :], df.iloc[non_zero_idx, :]], axis=0)
 
     return ndf
 
 
-def resample_df(df, bins=100):
+def resample_df(df:pd.DataFrame, bins=100)->pd.DataFrame:
+    """
+    Resample the driving data from the histogram of steering values.
+    It divides the range of steering values into a certain number of beams,
+    then select the medium counts of sample from each bin.
+
+    :param df: The pandas dataframe that has same forms of driving_log.csv
+    :param bins: The number of bins
+    :return: The new filtered dataframe
+    """
     steering_val = df["steering"].values
     counts, bin_bound = np.histogram(steering_val, bins=bins)
     rand_size = np.floor(np.median(counts)).astype('int')
+
     final_idx = []
+
+    # Go through each bin and randomly select data from each bin
     for i in range(bin_bound.shape[0] - 1):
         idx = np.logical_and(steering_val >= bin_bound[i], steering_val < bin_bound[i + 1])
         num_idx = np.flatnonzero(idx)
@@ -132,23 +162,12 @@ def trans_image(image, trans_range):
     return image_tr, steer_ang
 
 
-def load_sample_df(df: pd.DataFrame, test_size=0.2):
-    train, val = train_test_split(df, test_size=test_size)
-
-    return train, val
-
-
-center_cam = {'cam_index': 0, 'steering_adjust': 0, 'slope': 1}
-right_cam = {'cam_index': 2, 'steering_adjust': -0.14, "slope": 1}
-left_cam = {'cam_index': 1, 'steering_adjust': 0.14, "slope": 1}
-
-
 def generator(input_samples, batch_size=32,
               shuffle_samples=True, side_cam=False,
               filter=False, sample_num_bound=None):
     while True:  # Loop forever so the generator never terminates
         if filter == True:
-            samples = filter_dataset(input_samples)
+            samples = filter_zero_steering(input_samples)
             samples = resample_df(samples)
             sel_idx = np.random.choice(samples.shape[0], sample_num_bound)
             samples = samples.iloc[sel_idx, :]
@@ -169,60 +188,35 @@ def generator(input_samples, batch_size=32,
             images = []
             steer_adj = []
             for batch_sample in batch_samples:
-                center_image = cv2.imread(batch_sample)
+                cam_image = cv2.imread(batch_sample)
                 # augment new images
-                center_image = augment_brightness_camera_images(center_image)
-                center_image, adj = trans_image(center_image, 100)
-                center_image = preprossing(center_image)
+                cam_image = augment_brightness_camera_images(cam_image)
+                cam_image, adj = trans_image(cam_image, 100)
+                if np.random.rand()>0.5:
+                    cam_image=np.flip(cam_image,axis=2)
 
-                images.append(center_image)
+                # Proprocess the image for training
+                cam_image = preprossing(cam_image)
+
+                images.append(cam_image)
                 steer_adj.append(adj)
 
             X_train = np.array(images)
             y_train = samples.iloc[offset:min(offset + batch_size, num_samples), 3] \
                       * cam["slope"] + cam['steering_adjust'] + np.array(steer_adj)
 
-            nX_train = np.flip(X_train, axis=3)
+            yield X_train, y_train
 
-            cX_train = np.concatenate((X_train, nX_train), axis=0)
-            cy_train = np.concatenate((y_train, y_train), axis=0)
-
-            yield cX_train, cy_train
-
-
-def load_bottleneck_data(training_file, validation_file):
-    """
-    Utility function to load bottleneck features.
-
-    Arguments:
-        training_file - String
-        validation_file - String
-    """
-    print("Training file", training_file)
-    print("Validation file", validation_file)
-
-    with open(training_file, 'rb') as f:
-        train_data = pickle.load(f)
-    with open(validation_file, 'rb') as f:
-        validation_data = pickle.load(f)
-
-    X_train = train_data['features']
-    y_train = train_data['labels']
-    X_val = validation_data['features']
-    y_val = validation_data['labels']
-
-    return X_train, y_train, X_val, y_val
 
 
 def main(_):
-    # load bottleneck data
 
     train_samples = load_multi_dataset(train_dataset_folder)
 
     validation_samples = load_multi_dataset(val_dataset_folder)
 
     # train_samples=filter_dataset(train_samples)
-    dummy_train_samples = filter_dataset(train_samples)
+    dummy_train_samples = filter_zero_steering(train_samples)
     dummy_train_samples = resample_df(dummy_train_samples)
     var_sample_num = dummy_train_samples.shape[0]
 
@@ -259,19 +253,19 @@ def main(_):
     callback_list = [checkpoint]
 
     hist = nvidia_model.fit_generator(train_generator,
-                                      var_sample_num * 2,
+                                      var_sample_num,
                                       nb_epoch=10,
                                       validation_data=validation_generator,
-                                      nb_val_samples=validation_samples.shape[0] * 2,
+                                      nb_val_samples=validation_samples.shape[0],
                                       callbacks=callback_list)
 
     # nvidia_model.evaluate_generator(validation_generator,validation_samples.shape[0])
 
-    with open('model_hist_r_v10_1.p', 'wb') as fp:
+    with open('model_hist_r_v12.p', 'wb') as fp:
         pickle.dump(hist.history, fp)
 
-    nvidia_model.save("model_r_v11.h5")
-    nvidia_model.save_weights('nvidia_model_weights_r_v11.h5')
+    nvidia_model.save("model_r_v12.h5")
+    nvidia_model.save_weights('nvidia_model_weights_r_v12.h5')
 
 
 # parses flags and calls the `main` function above

@@ -17,6 +17,11 @@ Our model treat an image/steering pair as an independent event. A zig-zag turn w
 2. Recovery data
 Recovery data is very useful in rescuing the unexpected driving behavior. I deliberately steer a car off the center of the lane and record how it recovers. After that, I delete the data entries with steering value is zero, because these entries contains the actions of driving the car towards the sideline, which increases noises in the training dataset.
 
+## Dataset for validation
+
+Rather than picking up a portion of train dataset as the validation data, I use a completely separated driving data as the validation data. When I focused on training the car to drive track 1, I used the sample data provided by Udacity as the validation data. When I focused on training the car to drive on track 2, I use a small set of driving data on track 2 as the validation data to monior the training process.
+
+
 
 ## Models
 
@@ -25,6 +30,10 @@ The overall modeling flow is illustrated as the following
 
 ![model_arch](./data_figs/00048-Model Architecture.png)
 
+
+### Optimizer and loss function
+
+MSE is for reference only. Once the MSE comes down than 0.1, it is more accurate to use actually run the model in the simulator. In ths project, low MSE value is not necessarily better
 
 
 ### Preprocessing
