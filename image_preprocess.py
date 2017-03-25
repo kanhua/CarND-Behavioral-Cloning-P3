@@ -41,6 +41,7 @@ def preprossing(image):
 
     n_img=crop(image)
     n_img=resize(n_img)
+    n_img=to_yuv(n_img)
 
     return n_img
 

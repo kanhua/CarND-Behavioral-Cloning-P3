@@ -31,6 +31,7 @@ train_dataset_folder = [("track1_new_1/", 2, False),
                         ("track1_rec_1/", 2, True),
                         ("track1_rec_2", 2, True),
                         ("track1_rec_3", 2, True),
+                        ("track1_rec_4", 2, False),
                         # ("track2_7",1,False),
                         # ("track2_8",1,False),
                         # ("track2_9",1,False),
@@ -43,7 +44,12 @@ train_dataset_folder = [("track1_new_1/", 2, False),
                         ("track2_rec_8", 1, True),
                         ("track2_rec_7", 1, True),
                         ("track2_rec_9", 1, True),
-                        ("track2_rec_10", 1, True)]
+                        ("track2_rec_10", 1, True),
+                        ("track2_rec_11",1,True)]
+
+add_on_dataset_folder=[("track1_rec_4",1,False),
+                       ("track2_rec_10",1,False),
+                       ("track2_rec_11",1,False)]
 # ("track2_curve_1",1,False)]
 
 # train_dataset_folder=["track1_rec_3/","track1_new_1/"]
@@ -63,7 +69,7 @@ def load_multi_dataset(data_dirs_pair: list)->pd.DataFrame:
     for i, ddir in enumerate(data_dirs):
         df = update_df(ddir)
         if data_dirs_pair[i][2]:
-            df = df.loc[np.abs(df["steering"]) < 0.01, :]
+            df = df.loc[np.abs(df["steering"]) > 0.01, :]
         for k in range(data_dirs_pair[i][1]):
             all_df.append(df)
 
@@ -164,10 +170,11 @@ def trans_image(image, trans_range):
 
 def generator(input_samples, batch_size=32,
               shuffle_samples=True, side_cam=False,
-              filter=False, sample_num_bound=None):
+              filter=False, sample_num_bound=None,zero_size=0.01):
+
     while True:  # Loop forever so the generator never terminates
+        samples = filter_zero_steering(input_samples,keep_size=zero_size)
         if filter == True:
-            samples = filter_zero_steering(input_samples)
             samples = resample_df(samples)
             sel_idx = np.random.choice(samples.shape[0], sample_num_bound)
             samples = samples.iloc[sel_idx, :]
@@ -212,7 +219,7 @@ def generator(input_samples, batch_size=32,
 def main(_):
 
     train_samples = load_multi_dataset(train_dataset_folder)
-
+    #train_samples=load_multi_dataset(add_on_dataset_folder)
     validation_samples = load_multi_dataset(val_dataset_folder)
 
     # train_samples=filter_dataset(train_samples)
@@ -220,9 +227,18 @@ def main(_):
     dummy_train_samples = resample_df(dummy_train_samples)
     var_sample_num = dummy_train_samples.shape[0]
 
-    train_generator = generator(train_samples,
+    d2_train_samples=filter_zero_steering(train_samples,keep_size=0.1)
+
+
+    train_generator_filter = generator(train_samples,
                                 batch_size=batch_size,
                                 side_cam=train_side_camera, filter=True, sample_num_bound=var_sample_num)
+
+    train_generator_regular = generator(train_samples,
+                                       batch_size=batch_size,
+                                       side_cam=train_side_camera, filter=False,
+                                        sample_num_bound=d2_train_samples.shape[0],zero_size=0.1)
+
     validation_generator = generator(validation_samples,
                                      batch_size=batch_size, side_cam=False, filter=False)
 
@@ -230,9 +246,6 @@ def main(_):
 
     nvidia_model.add(Lambda(lambda x: x / 255.0 - 0.5, input_shape=(IMAGE_HEIGHT, IMAGE_WIDTH, 3)))
 
-    # nvidia_model.add(Cropping2D(cropping=((70, 24), (0, 0))))
-
-    # nvidia_model.add(Lambda(lambda image: K.resize_images(image, (160-94)/2,160,'tf')))
     nvidia_model.add(Convolution2D(24, 5, 5, subsample=(2, 2), activation='relu'))
     nvidia_model.add(Convolution2D(36, 5, 5, subsample=(2, 2), activation='relu'))
     nvidia_model.add(Convolution2D(48, 5, 5, subsample=(2, 2), activation='relu'))
@@ -247,25 +260,32 @@ def main(_):
 
     # adam=Adam(lr=0.0001)
     nvidia_model.compile(optimizer='adam', loss='mse')
-    # nvidia_model.load_weights('nvidia_model_weights_r_v10.h5')
+    nvidia_model.load_weights('nvidia_model_weights_r_v13.h5')
 
     checkpoint = ModelCheckpoint(filepath='./_model_checkpoints/model-{epoch:02d}.h5')
     callback_list = [checkpoint]
 
-    hist = nvidia_model.fit_generator(train_generator,
-                                      var_sample_num,
-                                      nb_epoch=10,
-                                      validation_data=validation_generator,
-                                      nb_val_samples=validation_samples.shape[0],
-                                      callbacks=callback_list)
+    for i in range(5):
+        hist = nvidia_model.fit_generator(train_generator_filter,
+                                          var_sample_num,
+                                          nb_epoch=1,
+                                          validation_data=validation_generator,
+                                          nb_val_samples=validation_samples.shape[0],
+                                          callbacks=callback_list)
+        hist = nvidia_model.fit_generator(train_generator_regular,
+                                          d2_train_samples.shape[0],
+                                          nb_epoch=1,
+                                          validation_data=validation_generator,
+                                          nb_val_samples=validation_samples.shape[0],
+                                          callbacks=callback_list)
 
     # nvidia_model.evaluate_generator(validation_generator,validation_samples.shape[0])
 
-    with open('model_hist_r_v12.p', 'wb') as fp:
+    with open('model_hist_r_v13_1.p', 'wb') as fp:
         pickle.dump(hist.history, fp)
 
-    nvidia_model.save("model_r_v12.h5")
-    nvidia_model.save_weights('nvidia_model_weights_r_v12.h5')
+    nvidia_model.save("model_r_v13_1.h5")
+    nvidia_model.save_weights('nvidia_model_weights_r_v13_1.h5')
 
 
 # parses flags and calls the `main` function above
