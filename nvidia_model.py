@@ -63,11 +63,14 @@ left_cam = {'cam_index': 1, 'steering_adjust': 0.14, "slope": 1}
 
 
 def load_multi_dataset(data_dirs_pair: list)->pd.DataFrame:
+
+    # Change the directory of image files in the log files.
     data_dirs = list(map(lambda x: os.path.join(parent_data_folder, x[0]), data_dirs_pair))
 
     all_df = []
     for i, ddir in enumerate(data_dirs):
         df = update_df(ddir)
+        # Eliminate low steering angle data if data_dirs_pair[i][2] is True
         if data_dirs_pair[i][2]:
             df = df.loc[np.abs(df["steering"]) > 0.01, :]
         for k in range(data_dirs_pair[i][1]):
@@ -170,16 +173,32 @@ def trans_image(image, trans_range):
 
 def generator(input_samples, batch_size=32,
               shuffle_samples=True, side_cam=False,
-              filter=False, sample_num_bound=None,zero_size=0.01):
+              filter=False, sample_num_bound=None,zero_size=0.01,alternating=True):
 
+    start_filter_option=filter
     while True:  # Loop forever so the generator never terminates
-        samples = filter_zero_steering(input_samples,keep_size=zero_size)
+        print("filter:%s"%filter)
+        if alternating==True and filter==False:
+            samples=filter_zero_steering(input_samples,keep_size=zero_size*10)
+            print("using more zero data")
+        else:
+            samples=filter_zero_steering(input_samples,keep_size=zero_size)
+            print("use reg. zero data")
+
         if filter == True:
             samples = resample_df(samples)
             sel_idx = np.random.choice(samples.shape[0], sample_num_bound)
             samples = samples.iloc[sel_idx, :]
         else:
-            samples = input_samples
+            #samples = input_samples
+            #assert sample_num_bound>samples.shape[0]
+            sel_idx = np.random.choice(samples.shape[0], sample_num_bound)
+            samples = samples.iloc[sel_idx, :]
+
+        if alternating==False:
+            filter=start_filter_option
+        else:
+            filter=(not filter)
 
         if shuffle_samples:
             samples = shuffle(samples)
@@ -234,13 +253,9 @@ def main(_):
                                 batch_size=batch_size,
                                 side_cam=train_side_camera, filter=True, sample_num_bound=var_sample_num)
 
-    train_generator_regular = generator(train_samples,
-                                       batch_size=batch_size,
-                                       side_cam=train_side_camera, filter=False,
-                                        sample_num_bound=d2_train_samples.shape[0],zero_size=0.1)
-
     validation_generator = generator(validation_samples,
-                                     batch_size=batch_size, side_cam=False, filter=False)
+                                     batch_size=batch_size, side_cam=False, filter=False,
+                                     sample_num_bound=validation_samples.shape[0],alternating=False)
 
     nvidia_model = Sequential()
 
@@ -260,32 +275,25 @@ def main(_):
 
     # adam=Adam(lr=0.0001)
     nvidia_model.compile(optimizer='adam', loss='mse')
-    nvidia_model.load_weights('nvidia_model_weights_r_v13.h5')
+    #nvidia_model.load_weights('nvidia_model_weights_r_v13.h5')
 
     checkpoint = ModelCheckpoint(filepath='./_model_checkpoints/model-{epoch:02d}.h5')
     callback_list = [checkpoint]
 
-    for i in range(5):
-        hist = nvidia_model.fit_generator(train_generator_filter,
+    hist = nvidia_model.fit_generator(train_generator_filter,
                                           var_sample_num,
-                                          nb_epoch=1,
-                                          validation_data=validation_generator,
-                                          nb_val_samples=validation_samples.shape[0],
-                                          callbacks=callback_list)
-        hist = nvidia_model.fit_generator(train_generator_regular,
-                                          d2_train_samples.shape[0],
-                                          nb_epoch=1,
+                                          nb_epoch=10,
                                           validation_data=validation_generator,
                                           nb_val_samples=validation_samples.shape[0],
                                           callbacks=callback_list)
 
     # nvidia_model.evaluate_generator(validation_generator,validation_samples.shape[0])
 
-    with open('model_hist_r_v13_1.p', 'wb') as fp:
+    with open('model_hist_r_v14.p', 'wb') as fp:
         pickle.dump(hist.history, fp)
 
-    nvidia_model.save("model_r_v13_1.h5")
-    nvidia_model.save_weights('nvidia_model_weights_r_v13_1.h5')
+    nvidia_model.save("model_r_v14.h5")
+    nvidia_model.save_weights('nvidia_model_weights_r_v14.h5')
 
 
 # parses flags and calls the `main` function above
