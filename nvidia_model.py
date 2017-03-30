@@ -127,7 +127,7 @@ def resample_df(df: pd.DataFrame, bins=100) -> pd.DataFrame:
     return df.iloc[final_idx, :]
 
 
-def augment_brightness_camera_images(image):
+def aug_brightness(image):
     """
     Randomly adjust the brightness of an image
     This code is adapted from
@@ -147,7 +147,7 @@ def augment_brightness_camera_images(image):
     return image1
 
 
-def trans_image(image, trans_range):
+def aug_trans(image, trans_range):
     """
     Randomly do translation of an image.
     The code is adapted from
@@ -188,6 +188,8 @@ def generator(input_samples, batch_size=32,
     start_filter_option = filter
     while True:  # Loop forever so the generator never terminates
         print("filter:%s" % filter)
+
+        # Filter out steering==0.0 data
         if alternating == True and filter == False:
             samples = filter_zero_steering(input_samples, keep_size=zero_size * 10)
         else:
@@ -196,20 +198,21 @@ def generator(input_samples, batch_size=32,
         if filter == True:
             samples = resample_df(samples)
 
-        # Select the samples based on the value of sample_num_bound
-        sel_idx = np.random.choice(samples.shape[0], sample_num_bound)
-        samples = samples.iloc[sel_idx, :]
-
+        # Alternate "filter" between True and False
         if alternating == False:
             filter = start_filter_option
         else:
             filter = (not filter)
 
+        # Select the samples based on the value of sample_num_bound
+        sel_idx = np.random.choice(samples.shape[0], sample_num_bound)
+        samples = samples.iloc[sel_idx, :]
+
         if shuffle_samples:
             samples = shuffle(samples)
         num_samples = len(samples)
 
-        #iterate through each row of driving_log dataframe
+        # iterate through each row of driving_log dataframe
         for offset in range(0, num_samples, batch_size):
 
             # Select the image among the three cameras
@@ -227,10 +230,10 @@ def generator(input_samples, batch_size=32,
                 cam_image = cv2.imread(batch_sample)
 
                 # augment new images by adjusting the brightness and translational transformation
-                cam_image = augment_brightness_camera_images(cam_image)
-                cam_image, adj = trans_image(cam_image, 100)
+                cam_image = aug_brightness(cam_image)
+                cam_image, adj = aug_trans(cam_image, 100)
 
-                #Flip the image horizonally
+                # Flip the image horizonally
                 if np.random.rand() > 0.5:
                     cam_image = np.flip(cam_image, axis=2)
 
@@ -249,7 +252,6 @@ def generator(input_samples, batch_size=32,
 
 def train_model():
     train_samples = load_multi_dataset(train_dataset_folder)
-    # train_samples=load_multi_dataset(add_on_dataset_folder)
     validation_samples = load_multi_dataset(val_dataset_folder)
 
     # Calculate the total number of samples of each epoch
@@ -258,8 +260,8 @@ def train_model():
     var_sample_num = dummy_train_samples.shape[0]
 
     train_generator = generator(train_samples,
-                                       batch_size=batch_size,
-                                       side_cam=train_side_camera, filter=True, sample_num_bound=var_sample_num)
+                                batch_size=batch_size,
+                                side_cam=train_side_camera, filter=True, sample_num_bound=var_sample_num)
 
     validation_generator = generator(validation_samples,
                                      batch_size=batch_size, side_cam=False, filter=False,
@@ -294,13 +296,13 @@ def train_model():
                                       nb_val_samples=validation_samples.shape[0],
                                       callbacks=callback_list)
 
-    # nvidia_model.evaluate_generator(validation_generator,validation_samples.shape[0])
 
-    with open('model_hist_r_v14.p', 'wb') as fp:
+    with open('model_hist_dummy', 'wb') as fp:
         pickle.dump(hist.history, fp)
 
-    nvidia_model.save("model_r_v14.h5")
-    nvidia_model.save_weights('nvidia_model_weights_r_v14.h5')
+    nvidia_model.save("model_dummy.h5")
+    nvidia_model.save_weights('nvidia_model_weight_dummy.h5')
+
 
 if __name__ == '__main__':
     train_model()

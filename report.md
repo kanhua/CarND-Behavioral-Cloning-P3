@@ -35,7 +35,7 @@ Recovery data is very useful in rescuing the unexpected driving behavior. I deli
 Rather than randomly selecting a portion of train dataset as the validation data in runtime, I use a completely separated driving data as the validation data. When I focused on training the car to drive track 1, I used the sample data provided by Udacity as the validation data. When I focused on training the car to drive on track 2, I use a small set of driving data on track 2 as the validation data to monior the training process.
 
 ### Preprocessing
-Each image was preprocessed by the following steps:
+Each image was preprocessed by the following steps:(see ```image_preprocess.py``` )
 
 - Remove the top 60 pixels that contains the landscape and the bottom 25 pixels that contains the car hood.
 
@@ -47,8 +47,7 @@ Each image was preprocessed by the following steps:
 I use the NVidia model to train the data.
 The overall modeling flow is illustrated as the following
 
-![model_arch](./data_figs/00048-Model Architecture.png)
-
+![model_arch](./data_figs/00048-Model_Architecture.png)
 
 ### Data Augmentation and Resampling
 
@@ -56,7 +55,7 @@ Data augmentation can help generate more points in the "feature" space and thus 
 
 The flow of data resampling and augmentation is illustrated as below:
 
-![resample](./data_figs/00049-Image preprocessing flow.png)
+![resample](./data_figs/00049-Image_preprocessing_flow.png)
 
 #### Three cameras
 I use all the three cameras to train the data. During the training, the model randomly select a camera image among the three. I added +/- 0.14 of steering values to the cameras. In principle, these offset values can be calculated by using trigonometry, however, I found that there are too many unknown variables to correctly determine the offsets added to steering values. I thus use an empirical approach with the following steps:
@@ -76,7 +75,7 @@ This method will then provide a good starting point for the offset needed for th
 I filpped each image horizontally and multiply the steering value by -1 accordingly.
 
 
-#### Brightness adjustment and translational shift
+#### Brightness adjustment and translational shift (```aug_trans()``` and ```aug_brightness()```)
 I randomly adjusted the contrast and shifting the pixels of each image following the method of [this blog post](https://chatbotslife.com/using-augmentation-to-mimic-human-driving-496b569760a9#.uug7vtl7i).
 
 
@@ -85,11 +84,11 @@ In the raw driving data contains large amount of entries with almost zero steeri
 
 ![original data histogram](./data_figs/hist_raw.png)
 
-First I select the 1% of the data with ```steering==0```, the histogram becomes
+First I select the 1% of the data with ```steering==0``` (see ```filter_zero_steering()```), the histogram becomes
 
 ![original data histogram](./data_figs/hist_1st_pass.png)
 
-Then I resample the data from each bin to balance the numbers of each bin:
+Then I resample the data from each bin to balance the numbers of each bin: (see ```resample_df()```)
 
 ![original data histogram](./data_figs/hist_uniform.png)
 
@@ -99,6 +98,26 @@ The advantage of uniform distriubtion in steering values is reducing the bias of
 I therefore use an "alternaing" approach. I turn the resampling on and off between epochs. I found this approach is quite effective to prevent overfitting.
 
 ![alt_training](./data_figs/alternaing_training.png)
+
+The code snippet for doing this is in the beginning of ```generator()```, like this:
+
+```python
+# Filter out steering==0.0 data
+if alternating == True and filter == False:
+    samples = filter_zero_steering(input_samples, keep_size=zero_size * 10)
+else:
+    samples = filter_zero_steering(input_samples, keep_size=zero_size)
+
+if filter == True:
+    samples = resample_df(samples)
+
+# Alternate "filter" between True and False
+if alternating == False:
+    filter = start_filter_option
+else:
+    filter = (not filter)
+```
+
 
 ### Model training and selection
 
@@ -111,7 +130,7 @@ After resampling, I trained the model with around 90000 images within an epoch. 
 
 ![mse_loss](./data_figs/mse_loss.png)
 
-The videos of the driving can be found in
+The trained model can drive the car fairly stable and almost stay at the center of its lane most of the time. The videos of the driving can be found in
 
-- [Lake Track](https://youtu.be/jZ_XtO-EU-Q)
-- [Tropical Track](https://youtu.be/OyS8siF0Mpk)
+- Lake Track:[YouTube](https://youtu.be/jZ_XtO-EU-Q)
+- Tropical(Challnge) Track:[YouTube](https://youtu.be/OyS8siF0Mpk)
