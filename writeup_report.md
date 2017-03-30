@@ -8,12 +8,12 @@ This project uses a deep learning approach to clone the driving behaviour of a c
 
 The project includes the following main files:
 
-- ```nvidia_model.py```: The main script for training the model.
+- ```model.py```: The main script for training the model.
 - ```drive.py``` for driving the car in autonomous mode.
 - ```model.h5```: Keras model file of the trained model.
 - ```image_preprocess.py```: Functions that do image processing.
-- ```track1_fastest.mp4```: The video of running track 1 in autonomous mode with the setting "fastest" in the simulator.
-- ```track2_fastest.mp4```: The video of running track 2 (challenge track) in autonomous mode with the setting "fastest" in the simulator.
+- ```video_track1.mp4```: The video of running track 1 in autonomous mode with the setting "fastest" in the simulator.
+- ```video_track2.mp4```: The video of running track 2 (challenge track) in autonomous mode with the setting "fastest" in the simulator.
 
 ## Model Architecture and Training Strategy
 
@@ -39,12 +39,12 @@ Each image was preprocessed by the following steps:(see ```image_preprocess.py``
 
 - Remove the top 60 pixels that contains the landscape and the bottom 25 pixels that contains the car hood.
 
-- Resize the image to 66x200, which is the input image size used in NVidia paper.
+- Resize the image to 66x200, which is the input image size used in [NVidia paper](https://arxiv.org/abs/1604.07316).
 
 - Convert the image from RGB space to HUV space.
 
 ### Construct the model
-I use the NVidia model to train the data.
+I use the [NVidia model](https://arxiv.org/abs/1604.07316) to train the data.
 The overall modeling flow is illustrated as the following
 
 ![model_arch](./data_figs/00048-Model_Architecture.png)
@@ -118,11 +118,9 @@ else:
     filter = (not filter)
 ```
 
-
 ### Model training and selection
 
-I use Adam optimizer with a learning rate of 0.01 and mean squared error as the loss function to train the model. In this project, a model with low MSE values is not necessarily the best model. Low MSE values may indicate that the model is overfitted, particularly when the in-sample MSE is much lower than the MSE of validation set.
-Therefore, I saved the model after each epoch and select the best model by actualy seeing how the model drives in the simulator.
+I use Adam optimizer with a learning rate of 0.01 and mean squared error as the loss function to train the model. In this project, a model with low MSE values is not necessarily the best model. Low MSE values may indicate that the model is overfitted, particularly when the in-sample MSE is much lower than the MSE of validation set. Therefore, I saved the model after each epoch and select the best model by actualy seeing how the model drives in the simulator. 
 
 ## Results
 
