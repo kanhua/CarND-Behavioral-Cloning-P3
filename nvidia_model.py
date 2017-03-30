@@ -1,26 +1,19 @@
 import pickle
 import numpy as np
-import tensorflow as tf
-from keras.models import Sequential, Model
-from keras.layers import Dense, Dropout, \
-    Flatten, Input, Lambda, Cropping2D, Convolution2D
+from keras.models import Sequential
+from keras.layers import Dense, \
+    Flatten, Lambda, Convolution2D
 from keras.callbacks import ModelCheckpoint
-from keras.optimizers import Adam
 import pandas as pd
 import os
-from sklearn.model_selection import train_test_split
 from sklearn.utils import shuffle
 import cv2
-import typing
 from fix_path import update_df
 import random
 from image_preprocess import preprossing, IMAGE_HEIGHT, IMAGE_WIDTH
 
-flags = tf.app.flags
-FLAGS = flags.FLAGS
-
 # Set parameters here
-steering_index=3
+steering_index = 3
 parent_data_folder = './data/'
 img_sub_foler = 'IMG/'
 ch, row, col = 3, 160, 320
@@ -32,38 +25,33 @@ train_dataset_folder = [("track1_new_1/", 2, False),
                         ("track1_rec_2", 2, True),
                         ("track1_rec_3", 2, True),
                         ("track1_rec_4", 2, False),
-                        # ("track2_7",1,False),
-                        # ("track2_8",1,False),
-                        # ("track2_9",1,False),
-                        # ("track2_10",1,False),
                         ("track2_11", 1, False),
                         ("track2_13", 1, False),
                         ("track2_rev_1", 1, False),
-                        # ("track2_rec_5",1,True),
-                        # ("track2_rec_6",1,True),
                         ("track2_rec_8", 1, True),
                         ("track2_rec_7", 1, True),
                         ("track2_rec_9", 1, True),
                         ("track2_rec_10", 1, True),
-                        ("track2_rec_11",1,True)]
+                        ("track2_rec_11", 1, True)]
 
-add_on_dataset_folder=[("track1_rec_4",1,False),
-                       ("track2_rec_10",1,False),
-                       ("track2_rec_11",1,False)]
-# ("track2_curve_1",1,False)]
-
-# train_dataset_folder=["track1_rec_3/","track1_new_1/"]
 val_dataset_folder = [("track2_val_1", 1, False)]
 train_side_camera = True
 batch_size = 512
 
+# Dictionaries that assign the steering angles
+# adjusted steering angle=[steering]*[slope]+[steering_adjust]
 center_cam = {'cam_index': 0, 'steering_adjust': 0, 'slope': 1}
 right_cam = {'cam_index': 2, 'steering_adjust': -0.14, "slope": 1}
 left_cam = {'cam_index': 1, 'steering_adjust': 0.14, "slope": 1}
 
 
-def load_multi_dataset(data_dirs_pair: list)->pd.DataFrame:
-
+def load_multi_dataset(data_dirs_pair: list):
+    """
+    Load the driving log data from several folders and combine then into a big pandas Dataframe
+    
+    :param data_dirs_pair: A list of folder names
+    :return: 
+    """
     # Change the directory of image files in the log files.
     data_dirs = list(map(lambda x: os.path.join(parent_data_folder, x[0]), data_dirs_pair))
 
@@ -81,7 +69,7 @@ def load_multi_dataset(data_dirs_pair: list)->pd.DataFrame:
     return all_df
 
 
-def filter_zero_steering(df:pd.DataFrame, keep_size=0.01, verbose=False)->pd.DataFrame:
+def filter_zero_steering(df: pd.DataFrame, keep_size=0.01, verbose=False) -> pd.DataFrame:
     """
     Reduce the number of entries in the data that steering==0.0
 
@@ -111,7 +99,7 @@ def filter_zero_steering(df:pd.DataFrame, keep_size=0.01, verbose=False)->pd.Dat
     return ndf
 
 
-def resample_df(df:pd.DataFrame, bins=100)->pd.DataFrame:
+def resample_df(df: pd.DataFrame, bins=100) -> pd.DataFrame:
     """
     Resample the driving data from the histogram of steering values.
     It divides the range of steering values into a certain number of beams,
@@ -141,12 +129,12 @@ def resample_df(df:pd.DataFrame, bins=100)->pd.DataFrame:
 
 def augment_brightness_camera_images(image):
     """
-    Augmentation of brightness.
-    This code is from
+    Randomly adjust the brightness of an image
+    This code is adapted from
     https://chatbotslife.com/using-augmentation-to-mimic-human-driving-496b569760a9#.gv8islemq
 
-    :param image:
-    :return:
+    :param image: image array
+    :return: the transformed image array
     """
 
     image1 = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
@@ -160,6 +148,16 @@ def augment_brightness_camera_images(image):
 
 
 def trans_image(image, trans_range):
+    """
+    Randomly do translation of an image.
+    The code is adapted from
+    https://chatbotslife.com/using-augmentation-to-mimic-human-driving-496b569760a9#.gv8islemq
+    
+    :param image: input image array
+    :param trans_range: maximum range of translation in pixels
+    :return: the transformed image array
+    """
+
     # Translation
     tr_x = trans_range * np.random.uniform() - trans_range / 2
     steer_ang = tr_x / trans_range * 2 * .2
@@ -173,37 +171,48 @@ def trans_image(image, trans_range):
 
 def generator(input_samples, batch_size=32,
               shuffle_samples=True, side_cam=False,
-              filter=False, sample_num_bound=None,zero_size=0.01,alternating=True):
-
-    start_filter_option=filter
+              filter=False, sample_num_bound=None, zero_size=0.01, alternating=True):
+    """
+    A generator that returns the images for feeding into fit_generator of Keras models
+    
+    :param input_samples: A pandas dataframe that matches the format of driving_log.csv
+    :param batch_size: Number of samples for each batch
+    :param shuffle_samples: set True to shuffle the samples when a new epoch starts
+    :param side_cam: set True to use side camera images
+    :param filter: set True to enable the resampling
+    :param sample_num_bound: total number of samples of an epoch
+    :param zero_size: The size of zero-steering to be kept for training
+    :param alternating: Set True to enable alternating epochs learning
+    :return: 
+    """
+    start_filter_option = filter
     while True:  # Loop forever so the generator never terminates
-        print("filter:%s"%filter)
-        if alternating==True and filter==False:
-            samples=filter_zero_steering(input_samples,keep_size=zero_size*10)
-            print("using more zero data")
+        print("filter:%s" % filter)
+        if alternating == True and filter == False:
+            samples = filter_zero_steering(input_samples, keep_size=zero_size * 10)
         else:
-            samples=filter_zero_steering(input_samples,keep_size=zero_size)
-            print("use reg. zero data")
+            samples = filter_zero_steering(input_samples, keep_size=zero_size)
 
         if filter == True:
             samples = resample_df(samples)
-            sel_idx = np.random.choice(samples.shape[0], sample_num_bound)
-            samples = samples.iloc[sel_idx, :]
-        else:
-            #samples = input_samples
-            #assert sample_num_bound>samples.shape[0]
-            sel_idx = np.random.choice(samples.shape[0], sample_num_bound)
-            samples = samples.iloc[sel_idx, :]
 
-        if alternating==False:
-            filter=start_filter_option
+        # Select the samples based on the value of sample_num_bound
+        sel_idx = np.random.choice(samples.shape[0], sample_num_bound)
+        samples = samples.iloc[sel_idx, :]
+
+        if alternating == False:
+            filter = start_filter_option
         else:
-            filter=(not filter)
+            filter = (not filter)
 
         if shuffle_samples:
             samples = shuffle(samples)
         num_samples = len(samples)
+
+        #iterate through each row of driving_log dataframe
         for offset in range(0, num_samples, batch_size):
+
+            # Select the image among the three cameras
             if side_cam == True:
                 cam = random.choice([center_cam, right_cam, left_cam])
             else:
@@ -214,12 +223,16 @@ def generator(input_samples, batch_size=32,
             images = []
             steer_adj = []
             for batch_sample in batch_samples:
+
                 cam_image = cv2.imread(batch_sample)
-                # augment new images
+
+                # augment new images by adjusting the brightness and translational transformation
                 cam_image = augment_brightness_camera_images(cam_image)
                 cam_image, adj = trans_image(cam_image, 100)
-                if np.random.rand()>0.5:
-                    cam_image=np.flip(cam_image,axis=2)
+
+                #Flip the image horizonally
+                if np.random.rand() > 0.5:
+                    cam_image = np.flip(cam_image, axis=2)
 
                 # Proprocess the image for training
                 cam_image = preprossing(cam_image)
@@ -234,28 +247,23 @@ def generator(input_samples, batch_size=32,
             yield X_train, y_train
 
 
-
-def main(_):
-
+def train_model():
     train_samples = load_multi_dataset(train_dataset_folder)
-    #train_samples=load_multi_dataset(add_on_dataset_folder)
+    # train_samples=load_multi_dataset(add_on_dataset_folder)
     validation_samples = load_multi_dataset(val_dataset_folder)
 
-    # train_samples=filter_dataset(train_samples)
+    # Calculate the total number of samples of each epoch
     dummy_train_samples = filter_zero_steering(train_samples)
     dummy_train_samples = resample_df(dummy_train_samples)
     var_sample_num = dummy_train_samples.shape[0]
 
-    d2_train_samples=filter_zero_steering(train_samples,keep_size=0.1)
-
-
-    train_generator_filter = generator(train_samples,
-                                batch_size=batch_size,
-                                side_cam=train_side_camera, filter=True, sample_num_bound=var_sample_num)
+    train_generator = generator(train_samples,
+                                       batch_size=batch_size,
+                                       side_cam=train_side_camera, filter=True, sample_num_bound=var_sample_num)
 
     validation_generator = generator(validation_samples,
                                      batch_size=batch_size, side_cam=False, filter=False,
-                                     sample_num_bound=validation_samples.shape[0],alternating=False)
+                                     sample_num_bound=validation_samples.shape[0], alternating=False)
 
     nvidia_model = Sequential()
 
@@ -273,19 +281,18 @@ def main(_):
     nvidia_model.add(Dense(10))
     nvidia_model.add(Dense(1))
 
-    # adam=Adam(lr=0.0001)
     nvidia_model.compile(optimizer='adam', loss='mse')
-    #nvidia_model.load_weights('nvidia_model_weights_r_v13.h5')
+    # nvidia_model.load_weights('nvidia_model_weights_r_v13.h5')
 
     checkpoint = ModelCheckpoint(filepath='./_model_checkpoints/model-{epoch:02d}.h5')
     callback_list = [checkpoint]
 
-    hist = nvidia_model.fit_generator(train_generator_filter,
-                                          var_sample_num,
-                                          nb_epoch=10,
-                                          validation_data=validation_generator,
-                                          nb_val_samples=validation_samples.shape[0],
-                                          callbacks=callback_list)
+    hist = nvidia_model.fit_generator(train_generator,
+                                      var_sample_num,
+                                      nb_epoch=10,
+                                      validation_data=validation_generator,
+                                      nb_val_samples=validation_samples.shape[0],
+                                      callbacks=callback_list)
 
     # nvidia_model.evaluate_generator(validation_generator,validation_samples.shape[0])
 
@@ -295,7 +302,5 @@ def main(_):
     nvidia_model.save("model_r_v14.h5")
     nvidia_model.save_weights('nvidia_model_weights_r_v14.h5')
 
-
-# parses flags and calls the `main` function above
 if __name__ == '__main__':
-    tf.app.run()
+    train_model()
