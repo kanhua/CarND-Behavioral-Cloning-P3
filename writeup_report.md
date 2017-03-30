@@ -20,21 +20,21 @@ The project includes the following main files:
 ### Collection of the training dataset
 
 I found the quality of training data is very critical to the success of enabling the car to finish the entire lap. With good quality of data, the size of training set can be greatly reduced.
-Good training dataset should span a large volume of the "feature" space, that is, the dataset should cover as much as landscapes and driving scenarios as possible. However, bad driving behaviour in the dataset should be minimized because they are essentially nosiy data.
+Good training dataset should span a large volume of the "feature" space, that is, the dataset should cover as much as landscapes and driving scenarios as possible. On the other hand, bad driving behaviour in the dataset should be minimized because they are essentially nosiy data.
 
 I found the following tips useful for collecting the driving data for training:
 
 1. Making the turns as smooth as possible
-Our model treat an image/steering pair as an independent event. A zig-zag turn will make the trained network make wrong judgement during the turn. For example, a zig-zag turn may have a moment that steering angle is zero, which gives wrong information during the training. I therefore recommend using a mouse or a joystick intead of using a keyboard, since keyboard strokes makes the left and right turns more discrete.
+Our model treat an image/steering pair as an independent event. A zig-zag turn will make the trained network make wrong judgement during the turn. For example, a zig-zag turn may have a moment that steering angle is zero, which gives wrong information during the training. I therefore recommend using a mouse or a joystick instead of using a keyboard, since keyboard strokes make the left and right turns more discrete.
 
 2. Recovery data
-Recovery data is very useful in rescuing the unexpected driving behavior. I deliberately steer a car off the center of the lane and record how it recovers. After that, I delete the data entries with steering value is zero, because these entries contains the actions of driving the car towards the sideline, which should not be learned by the model.
+Recovery data is very useful for rescuing the unexpected driving behavior. I deliberately steer a car off the center of the lane and record how it recovers. After that, I delete the data entries with steering value is zero, because these data entries contains the actions of driving the car towards the sideline, which should not be learned by the model.
 
 ## Dataset for validation
 
 Rather than randomly selecting a portion of train dataset as the validation data in runtime, I use a completely separated driving data as the validation data. When I focused on training the car to drive track 1, I used the sample data provided by Udacity as the validation data. When I focused on training the car to drive on track 2, I use a small set of driving data on track 2 as the validation data to monior the training process.
 
-### Preprocessing
+### Preprocessing of the images
 Each image was preprocessed by the following steps:(see ```image_preprocess.py``` )
 
 - Remove the top 60 pixels that contains the landscape and the bottom 25 pixels that contains the car hood.
@@ -62,11 +62,11 @@ I use all the three cameras to train the data. During the training, the model ra
 
 - Train a model with a regular driving dataset and some recovery driving data without using side cameras. The recovery driving data can "teach" the model how much steering value to use when the car deviates from the path.
 
-- Make sure the trained model can drive the car reasonably well in the simulator
+- Make sure the trained model can drive the car reasonably well in the simulator.
 
 - For each center camera image _I_, feed its associated side camera image data into the model, get their steering values _s(I')_.
 
-- Run a linear regression to find an appropriate offset between s(I) and s(I').
+- Run a linear regression to find an appropriate offset between _s(I)_ and _s(I')_.
 
 This method will then provide a good starting point for the offset needed for the side cameras.
 
@@ -80,7 +80,7 @@ I randomly adjusted the contrast and shifting the pixels of each image following
 
 
 #### Resampling the data
-In the raw driving data contains large amount of entries with almost zero steering values:
+The raw driving data contains large amount of entries with almost zero steering values:
 
 ![original data histogram](./data_figs/hist_raw.png)
 
@@ -93,7 +93,7 @@ Then I resample the data from each bin to balance the numbers of each bin: (see 
 ![original data histogram](./data_figs/hist_uniform.png)
 
 #### Alternating training
-The advantage of uniform distriubtion in steering values is reducing the bias of the model toward any steering angles. However, resampling also prevents some images to be "seen" by the model during the training. Therefore, resampling forms another type of bias for training. This can potentially be solved by carefully select the training data, but this takes a lot of time.
+The advantage of uniform distriubtion in steering values is reducing the bias of the model toward any steering angles. However, resampling also prevents some images to be seen by the model during the training. Therefore, resampling forms another type of bias for training. This can be solved by carefully select the training data, but this takes a lot of time.
 
 I therefore use an "alternaing" approach. I turn the resampling on and off between epochs. I found this approach is quite effective to prevent overfitting.
 
