@@ -21,8 +21,8 @@ The project includes the following main files:
 - ```drive.py``` for driving the car in autonomous mode.
 - ```model.h5```: Keras model file of the trained model.
 - ```image_preprocess.py```: Functions that do image processing.
-- ```video_track1.mp4```: The video of running track 1 in autonomous mode with the setting "fastest" in the simulator.
-- ```video_track2.mp4```: The video of running track 2 (challenge track) in autonomous mode with the setting "fastest" in the simulator.
+- [```video_track1.mp4```](./video_track1.mp4): The video of running track 1 in autonomous mode with the setting "fastest" in the simulator.
+- [```video_track2.mp4```](./video_track2.mp4): The video of running track 2 (challenge track) in autonomous mode with the setting "fastest" in the simulator.
 
 ## Model Architecture and Training Strategy
 
