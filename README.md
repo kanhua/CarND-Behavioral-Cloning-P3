@@ -1,117 +1,143 @@
-# Project 3: Use Deep Learning to Clone Driving Behavior
+# Use Deep Learning to Clone Driving Behavior
 
 [![Udacity - Self-Driving Car NanoDegree](https://s3.amazonaws.com/udacity-sdc/github/shield-carnd.svg)](http://www.udacity.com/drive)
 
-Overview
----
-This repository contains starting files for P3, Behavioral Cloning.
+![cover](./examples/cover_photo_small.png)
 
-In this project, you will use what you've learned about deep neural networks and convolutional neural networks to clone driving behavior. You will train, validate and test a model using Keras. The model will output a steering angle to an autonomous vehicle.
+## About this project
 
-We have provided a simulator where you can steer a car around a track for data collection. You'll use image data and steering angles to train a neural network and then use this model to drive the car autonomously around the track.
+- This project uses a deep learning approach to clone the driving behaviour of a car in the without [car simulator](https://github.com/udacity/self-driving-car/) developed by Udcity.
 
-We also want you to create a detailed writeup of the project. Check out the [writeup template](https://github.com/udacity/CarND-Behavioral-Cloning-P3/blob/master/writeup_template.md) for this project and use it as a starting point for creating your own writeup. The writeup can be either a markdown file or a pdf document.
+- The trained model can successfully drive the car in both Lake Track and a much more challenging Tropical track. The videos of the driving can be found in
+	- Lake Track:[YouTube](https://youtu.be/jZ_XtO-EU-Q)
+	- Tropical(Challnge) Track:[YouTube](https://youtu.be/OyS8siF0Mpk)
 
-To meet specifications, the project will require submitting four files: 
-* model.py (script used to create and train the model)
-* drive.py (script to drive the car - feel free to modify this file)
-* model.h5 (a trained Keras model)
-* a report writeup file (either markdown or pdf)
 
-Optionally, a video of your vehicle's performance can also be submitted with the project although this is optional. This README file describes how to output the video in the "Details About Files In This Directory" section.
+## Files
 
-Creating a Great Writeup
----
-A great writeup should include the [rubric points](https://review.udacity.com/#!/rubrics/432/view) as well as your description of how you addressed each point.  You should include a detailed description of the code used (with line-number references and code snippets where necessary), and links to other supporting documents or external references.  You should include images in your writeup to demonstrate how your code works with examples.  
+The project includes the following main files:
 
-All that said, please be concise!  We're not looking for you to write a book here, just a brief description of how you passed each rubric point, and references to the relevant code :). 
+- ```model.py```: The main script for training the model.
+- ```drive.py``` for driving the car in autonomous mode.
+- ```model.h5```: Keras model file of the trained model.
+- ```image_preprocess.py```: Functions that do image processing.
+- ```video_track1.mp4```: The video of running track 1 in autonomous mode with the setting "fastest" in the simulator.
+- ```video_track2.mp4```: The video of running track 2 (challenge track) in autonomous mode with the setting "fastest" in the simulator.
 
-You're not required to use markdown for your writeup.  If you use another method please just submit a pdf of your writeup.
+## Model Architecture and Training Strategy
 
-The Project
----
-The goals / steps of this project are the following:
-* Use the simulator to collect data of good driving behavior 
-* Design, train and validate a model that predicts a steering angle from image data
-* Use the model to drive the vehicle autonomously around the first track in the simulator. The vehicle should remain on the road for an entire loop around the track.
-* Summarize the results with a written report
+### Collection of the training dataset
 
-### Dependencies
-This lab requires:
+I found the quality of training data is very critical to the success of enabling the car to finish the entire lap. With good quality of data, the size of training set can be greatly reduced.
+Good training dataset should span a large volume of the "feature" space, that is, the dataset should cover as much as landscapes and driving scenarios as possible. On the other hand, bad driving behaviour in the dataset should be minimized because they are essentially nosiy data.
 
-* [CarND Term1 Starter Kit](https://github.com/udacity/CarND-Term1-Starter-Kit)
+I found the following tips useful for collecting the driving data for training:
 
-The lab enviroment can be created with CarND Term1 Starter Kit. Click [here](https://github.com/udacity/CarND-Term1-Starter-Kit/blob/master/README.md) for the details.
+1. Making the turns as smooth as possible
+Our model treat an image/steering pair as an independent event. A zig-zag turn will make the trained network make wrong judgement during the turn. For example, a zig-zag turn may have a moment that steering angle is zero, which gives wrong information during the training. I therefore recommend using a mouse or a joystick instead of using a keyboard, since keyboard strokes make the left and right turns more discrete.
 
-The following resources can be found in this github repository:
-* drive.py
-* video.py
-* writeup_template.md
+2. Recovery data
+Recovery data is very useful for rescuing the unexpected driving behavior. I deliberately steer a car off the center of the lane and record how it recovers. After that, I delete the data entries with steering value is zero, because these data entries contains the actions of driving the car towards the sideline, which should not be learned by the model.
 
-The simulator can be downloaded from the classroom. In the classroom, we have also provided sample data that you can optionally use to help train your model.
+## Dataset for validation
 
-## Details About Files In This Directory
+Rather than randomly selecting a portion of train dataset as the validation data in runtime, I use a completely separated driving data as the validation data. When I focused on training the car to drive track 1, I used the sample data provided by Udacity as the validation data. When I focused on training the car to drive on track 2, I use a small set of driving data on track 2 as the validation data to monior the training process.
 
-### `drive.py`
+### Preprocessing of the images
+Each image was preprocessed by the following steps:(see ```image_preprocess.py``` )
 
-Usage of `drive.py` requires you have saved the trained model as an h5 file, i.e. `model.h5`. See the [Keras documentation](https://keras.io/getting-started/faq/#how-can-i-save-a-keras-model) for how to create this file using the following command:
-```sh
-model.save(filepath)
+- Remove the top 60 pixels that contains the landscape and the bottom 25 pixels that contains the car hood.
+
+- Resize the image to 66x200, which is the input image size used in [NVidia paper](https://arxiv.org/abs/1604.07316).
+
+- Convert the image from RGB space to HUV space.
+
+### Construct the model
+I use the [NVidia model](https://arxiv.org/abs/1604.07316) to train the data.
+The overall modeling flow is illustrated as the following
+
+![model_arch](./data_figs/00048-Model_Architecture.png)
+
+### Data Augmentation and Resampling
+
+Data augmentation can help generate more points in the "feature" space and thus make the trained model more robust. I also resample the data based on their steering values during the training so that the trained model will not favor a particular direction. 
+
+The flow of data resampling and augmentation is illustrated as below:
+
+![resample](./data_figs/00049-Image_preprocessing_flow.png)
+
+#### Three cameras
+I use all the three cameras to train the data. During the training, the model randomly select a camera image among the three. I added +/- 0.14 of steering values to the cameras. In principle, these offset values can be calculated by using trigonometry, however, I found that there are too many unknown variables to correctly determine the offsets added to steering values. I thus use an empirical approach with the following steps:
+
+- Train a model with a regular driving dataset and some recovery driving data without using side cameras. The recovery driving data can "teach" the model how much steering value to use when the car deviates from the path.
+
+- Make sure the trained model can drive the car reasonably well in the simulator.
+
+- For each center camera image _I_, feed its associated side camera image data into the model, get their steering values _s(I')_.
+
+- Run a linear regression to find an appropriate offset between _s(I)_ and _s(I')_.
+
+This method will then provide a good starting point for the offset needed for the side cameras.
+
+
+#### Flip the images horizontally
+I filpped each image horizontally and multiply the steering value by -1 accordingly.
+
+
+#### Brightness adjustment and translational shift (```aug_trans()``` and ```aug_brightness()```)
+I randomly adjusted the contrast and shifting the pixels of each image following the method of [this blog post](https://chatbotslife.com/using-augmentation-to-mimic-human-driving-496b569760a9#.uug7vtl7i).
+
+
+#### Resampling the data
+The raw driving data contains large amount of entries with almost zero steering values:
+
+![original data histogram](./data_figs/hist_raw.png)
+
+First I select the 1% of the data with ```steering==0``` (see ```filter_zero_steering()```), the histogram becomes
+
+![original data histogram](./data_figs/hist_1st_pass.png)
+
+Then I resample the data from each bin to balance the numbers of each bin: (see ```resample_df()```)
+
+![original data histogram](./data_figs/hist_uniform.png)
+
+#### Alternating training
+The advantage of uniform distriubtion in steering values is reducing the bias of the model toward any steering angles. However, resampling also prevents some images to be seen by the model during the training. Therefore, resampling forms another type of bias for training. This can be solved by carefully select the training data, but this takes a lot of time.
+
+I therefore use an "alternaing" approach. I turn the resampling on and off between epochs. I found this approach is quite effective to prevent overfitting.
+
+![alt_training](./data_figs/alternaing_training.png)
+
+The code snippet for doing this is in the beginning of ```generator()```, like this:
+
+```python
+# Filter out steering==0.0 data
+if alternating == True and filter == False:
+    samples = filter_zero_steering(input_samples, keep_size=zero_size * 10)
+else:
+    samples = filter_zero_steering(input_samples, keep_size=zero_size)
+
+if filter == True:
+    samples = resample_df(samples)
+
+# Alternate "filter" between True and False
+if alternating == False:
+    filter = start_filter_option
+else:
+    filter = (not filter)
 ```
 
-Once the model has been saved, it can be used with drive.py using this command:
+### Model training and selection
 
-```sh
-python drive.py model.h5
-```
+I use Adam optimizer with a learning rate of 0.01 and mean squared error as the loss function to train the model. In this project, a model with low MSE values is not necessarily the best model. Low MSE values may indicate that the model is overfitted, particularly when the in-sample MSE is much lower than the MSE of validation set. Therefore, I saved the model after each epoch and select the best model by actualy seeing how the model drives in the simulator. 
 
-The above command will load the trained model and use the model to make predictions on individual images in real-time and send the predicted angle back to the server via a websocket connection.
+## Results
 
-Note: There is known local system's setting issue with replacing "," with "." when using drive.py. When this happens it can make predicted steering values clipped to max/min values. If this occurs, a known fix for this is to add "export LANG=en_US.utf8" to the bashrc file.
+After resampling, I trained the model with around 90000 images within an epoch. It took 10 epochs to achieve the result. The MSE against epochs is plotted in the below figure:
 
-#### Saving a video of the autonomous agent
+![mse_loss](./data_figs/mse_loss.png)
 
-```sh
-python drive.py model.h5 run1
-```
+The trained model can drive the car fairly stable and almost stay at the center of its lane most of the time. The videos of the driving can be found in
 
-The fourth argument `run1` is the directory to save the images seen by the agent to. If the directory already exists it'll be overwritten.
-
-```sh
-ls run1
-
-[2017-01-09 16:10:23 EST]  12KiB 2017_01_09_21_10_23_424.jpg
-[2017-01-09 16:10:23 EST]  12KiB 2017_01_09_21_10_23_451.jpg
-[2017-01-09 16:10:23 EST]  12KiB 2017_01_09_21_10_23_477.jpg
-[2017-01-09 16:10:23 EST]  12KiB 2017_01_09_21_10_23_528.jpg
-[2017-01-09 16:10:23 EST]  12KiB 2017_01_09_21_10_23_573.jpg
-[2017-01-09 16:10:23 EST]  12KiB 2017_01_09_21_10_23_618.jpg
-[2017-01-09 16:10:23 EST]  12KiB 2017_01_09_21_10_23_697.jpg
-[2017-01-09 16:10:23 EST]  12KiB 2017_01_09_21_10_23_723.jpg
-[2017-01-09 16:10:23 EST]  12KiB 2017_01_09_21_10_23_749.jpg
-[2017-01-09 16:10:23 EST]  12KiB 2017_01_09_21_10_23_817.jpg
-...
-```
-
-The image file name is a timestamp when the image image was seen. This information is used by `video.py` to create a chronological video of the agent driving.
-
-### `video.py`
-
-```sh
-python video.py run1
-```
-
-Create a video based on images found in the `run1` directory. The name of the video will be name of the directory following by `'.mp4'`, so, in this case the video will be `run1.mp4`.
-
-Optionally one can specify the FPS (frames per second) of the video:
-
-```sh
-python video.py run1 --fps 48
-```
-
-The video will run at 48 FPS. The default FPS is 60.
-
-#### Why create a video
-
-1. It's been noted the simulator might perform differently based on the hardware. So if your model drives succesfully on your machine it might not on another machine (your reviewer). Saving a video is a solid backup in case this happens.
-2. You could slightly alter the code in `drive.py` and/or `video.py` to create a video of what your model sees after the image is processed (may be helpful for debugging).
+- Lake Track:[YouTube](https://youtu.be/jZ_XtO-EU-Q)
+- Tropical(Challnge) Track:[YouTube](https://youtu.be/OyS8siF0Mpk)
